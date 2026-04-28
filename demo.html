@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="Морозов Артём Михайлович">
+  <meta name="project-author" content="Морозов Артём Михайлович, преподаватель модуля Введение в ИТ, младший научный сотрудник, mam@gtifem.ru, 89215550212">
+  <title>Демо MVP: кабинет проверки и переноса в БРС</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="shell" data-demo>
+    <aside class="side">
+      <div class="side__top">
+        <div class="brand">
+          <div class="brand__mark">MVP</div>
+          <div class="brand__title">Рабочий кабинет</div>
+          <div class="brand__caption">Демонстрация сценария: проверка -> утверждение -> БРС</div>
+        </div>
+        <button class="icon-btn icon-btn--dark" type="button" data-sidebar-toggle aria-label="Скрыть боковое меню" aria-expanded="true">
+          <span class="menu-icon" aria-hidden="true"><span></span></span>
+        </button>
+      </div>
+      <nav class="nav" aria-label="Навигация">
+        <a href="index.html">База проекта</a>
+        <a class="is-active" href="#workspace">Рабочий экран</a>
+        <a href="#fast-mode">Быстрая проверка</a>
+        <a href="#ai-integration">ИИ-интеграция</a>
+        <a href="#audit">Журнал</a>
+      </nav>
+      <section class="author-lock" aria-label="Заблокированная ячейка автора проекта">
+        <div class="author-lock__head">
+          <span aria-hidden="true">LOCK</span>
+          <strong>Автор проекта</strong>
+        </div>
+        <p><strong>Морозов Артём Михайлович</strong></p>
+        <p>Преподаватель модуля “Введение в ИТ”, младший научный сотрудник</p>
+        <p><a href="mailto:mam@gtifem.ru">mam@gtifem.ru</a></p>
+        <p><a href="tel:+79215550212">8 921 555 02 12</a></p>
+      </section>
+      <div class="side__footer">
+        Это статическая визуализация будущего сайта: кнопки меняют состояние сценария и показывают ход переноса результата.
+      </div>
+    </aside>
+    <button class="sidebar-backdrop" type="button" data-sidebar-close aria-label="Закрыть боковое меню"></button>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar__left">
+          <button class="icon-btn" type="button" data-sidebar-toggle aria-label="Открыть или скрыть боковое меню" aria-expanded="true">
+            <span class="menu-icon" aria-hidden="true"><span></span></span>
+          </button>
+          <div class="topbar__meta">
+            <span class="status-dot"></span>
+            <span>Demo mode · без подключения к реальным системам</span>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="btn" href="index.html">Назад к плану</a>
+          <button class="btn btn--primary" type="button" data-approve>Утвердить решение</button>
+          <button class="btn" type="button" data-transfer disabled>Создать колонку и записать</button>
+          <button class="btn btn--danger" type="button" data-sign disabled>Подписать вручную</button>
+          <button class="btn btn--primary" type="button" data-batch-transfer>Общая подпись и отправка</button>
+        </div>
+      </header>
+
+      <div class="content" id="workspace">
+        <section class="section" style="margin-top:0">
+          <div class="section__head">
+            <div>
+              <div class="eyebrow">Prototype / teacher workflow</div>
+              <h1>Кабинет преподавателя для проверки и переноса баллов</h1>
+              <p>Сценарий показывает правильную границу ответственности: ИИ готовит рекомендацию и transfer record, bridge записывает балл в незаблокированную ведомость, финальное подписание остается у преподавателя.</p>
+            </div>
+          </div>
+
+          <div class="steps">
+            <div class="step is-done" data-step="read">1. Работа прочитана</div>
+            <div class="step" data-step="approve">2. Решение утверждено</div>
+            <div class="step" data-step="column">3. Колонка создана</div>
+            <div class="step" data-step="transfer">4. Балл записан</div>
+            <div class="step" data-step="sign">5. Ведомость подписана</div>
+          </div>
+
+          <div class="demo-layout">
+            <aside class="panel">
+              <div class="panel__head">
+                <div>
+                  <h3>Очередь работ</h3>
+                  <p>Данные приходят из faculty-side портфолио.</p>
+                </div>
+              </div>
+              <div class="panel__body">
+                <div class="work-list" data-work-list></div>
+              </div>
+            </aside>
+
+            <section class="panel">
+              <div class="panel__head">
+                <div>
+                  <h3 data-work-name>Елена Барабаш</h3>
+                  <p><span data-work-module></span> · <span data-work-type></span></p>
+                </div>
+                <span class="tag tag--blue">work_id <span data-work-id></span></span>
+              </div>
+              <div class="panel__body">
+                <div class="score-card">
+                  <div class="score-ring"><span data-score>0,65</span></div>
+                  <div>
+                    <div class="eyebrow">Рекомендация ИИ</div>
+                    <h2><span data-level></span></h2>
+                    <p class="lead" style="font-size:15px;margin-top:10px">Уверенность: <strong data-confidence></strong>. Финальный уровень и числовой балл утверждает преподаватель.</p>
+                    <div class="tag-row">
+                      <span class="tag">level <span data-level-code></span></span>
+                      <span class="tag tag--amber">Rule Pack v1</span>
+                      <span class="tag tag--red">teacher approval required</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field-grid">
+                  <div class="field">
+                    <span>Студент</span>
+                    <strong data-work-name>Елена Барабаш</strong>
+                  </div>
+                  <div class="field">
+                    <span>Группа</span>
+                    <strong data-work-group></strong>
+                  </div>
+                  <div class="field">
+                    <span>Источник</span>
+                    <strong data-source></strong>
+                  </div>
+                  <div class="field">
+                    <span>Целевая ведомость</span>
+                    <strong data-statement></strong>
+                  </div>
+                </div>
+
+                <section class="section">
+                  <h3>Проект рецензии</h3>
+                  <p class="lead" style="font-size:16px" data-review></p>
+                </section>
+
+                <section class="section">
+                  <h3>Transfer record</h3>
+                  <div class="table-wrap" style="margin-top:12px">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Поле</th>
+                          <th>Значение</th>
+                          <th>Назначение</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>`source_work_id`</td>
+                          <td data-work-id></td>
+                          <td>Ссылка на запись в `gtifem.ru`.</td>
+                        </tr>
+                        <tr>
+                          <td>`xfem_student_id`</td>
+                          <td data-brs-student></td>
+                          <td>Идентификатор студента в БРС после crosswalk.</td>
+                        </tr>
+                        <tr>
+                          <td>`xfem_column_id`</td>
+                          <td data-column></td>
+                          <td>Целевая колонка ведомости.</td>
+                        </tr>
+                        <tr>
+                          <td>`desired_numeric_score`</td>
+                          <td data-score></td>
+                          <td>Числовой балл после Rule Pack.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              </div>
+            </section>
+
+            <aside class="panel">
+              <div class="panel__head">
+                <div>
+                  <h3>BRS Adapter</h3>
+                  <p>Визуализация записи в `xfem.ru` до блокировки.</p>
+                </div>
+              </div>
+              <div class="panel__body">
+                <div class="field-grid" style="grid-template-columns:1fr">
+                  <div class="field">
+                    <span>courseid</span>
+                    <strong>12636</strong>
+                  </div>
+                  <div class="field">
+                    <span>statement</span>
+                    <strong data-statement></strong>
+                  </div>
+                  <div class="field">
+                    <span>column eid</span>
+                    <strong>i<span data-column></span></strong>
+                  </div>
+                  <div class="field">
+                    <span>column status</span>
+                    <strong data-column-state>не создана</strong>
+                  </div>
+                  <div class="field">
+                    <span>auto create</span>
+                    <strong>`custom.php` -> resolve `sortitemid`</strong>
+                  </div>
+                  <div class="field">
+                    <span>lock guard</span>
+                    <strong>разрешена запись до `locksaved`</strong>
+                  </div>
+                </div>
+
+                <section class="section">
+                  <h3>Форма БРС</h3>
+                  <div class="table-wrap" style="margin-top:12px">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Студент</th>
+                          <th>Поле</th>
+                          <th>Балл</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td data-work-name></td>
+                          <td>`grade_<span data-brs-student></span>_<span data-column></span>`</td>
+                          <td><strong data-score></strong></td>
+                        </tr>
+                        <tr>
+                          <td>Контроль повтора</td>
+                          <td>`oldgrade_*`</td>
+                          <td>сравнить до записи</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="section" id="fast-mode">
+          <div class="section__head">
+            <div>
+              <h2>Ускоренный режим проверки</h2>
+              <p>Преподаватель видит сразу много работ: миниатюру загруженного файла, компетенцию, тип работы, рекомендацию ИИ, балл и кнопку расшифровки.</p>
+            </div>
+          </div>
+          <div class="fast-toolbar">
+            <div>
+              <strong>Пакет: Введение в информационные технологии · компетенции ОПК-5 / ОПК-6</strong>
+              <p>Быстрый сценарий создает незаблокированную колонку БРС автоматически, пишет все утвержденные баллы и оставляет подпись преподавателю.</p>
+            </div>
+            <button class="btn btn--primary" type="button" data-batch-transfer>Создать колонку, отправить и подписать пакет</button>
+          </div>
+          <div class="fast-review-list" data-fast-list></div>
+        </section>
+
+        <section class="section" id="ai-integration">
+          <div class="section__head">
+            <div>
+              <h2>Как ИИ встроен технически</h2>
+              <p>В демо показана логика сетевого обмена и обработки загруженной работы: от события в faculty-side до формирования рекомендации и записи в БРС.</p>
+            </div>
+          </div>
+          <div class="tech-flow">
+            <div class="tech-node">
+              <span>1. Faculty event</span>
+              <p>Connector получает work_id, файл, дисциплину, тип работы, компетенции и преподавателя из `gtifem.ru`.</p>
+            </div>
+            <div class="tech-node">
+              <span>2. Extraction</span>
+              <p>Backend скачивает файл, извлекает текст, структуру, таблицы, признаки оформления и метаданные.</p>
+            </div>
+            <div class="tech-node">
+              <span>3. AI + Rule Pack</span>
+              <p>ИИ формирует draft только внутри утвержденных правил: уровень, рецензия, confidence и предлагаемый балл.</p>
+            </div>
+            <div class="tech-node">
+              <span>4. Teacher approval</span>
+              <p>Преподаватель принимает или корректирует решение. Только после этого создается approved transfer record.</p>
+            </div>
+            <div class="tech-node">
+              <span>5. BRS resolve</span>
+              <p>Adapter создает незаблокированную ведомость или находит существующую, затем извлекает `column_id` из HTML.</p>
+            </div>
+            <div class="tech-node">
+              <span>6. Batch write</span>
+              <p>Система меняет только нужные `grade_student_column` поля и отправляет batch form в `xfem.ru`.</p>
+            </div>
+            <div class="tech-node">
+              <span>7. Verification</span>
+              <p>После записи adapter повторно читает страницу и сверяет, что балл появился в нужной ячейке.</p>
+            </div>
+            <div class="tech-node">
+              <span>8. Audit</span>
+              <p>Журнал фиксирует Rule Pack version, score, column_id, пользователя, время и результат операции.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="audit">
+          <div class="section__head">
+            <div>
+              <h2>Журнал действий</h2>
+              <p>В реальной системе здесь будет audit ledger: кто, когда, по какому Rule Pack и в какую ведомость перенес результат.</p>
+            </div>
+          </div>
+          <div class="audit-log" data-audit>
+            <div class="audit-log__item is-amber">Открыт демо-сценарий. Выберите работу или нажмите `Утвердить решение`.</div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div class="toast" data-toast></div>
+  <script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="Морозов Артём Михайлович">
+  <meta name="project-author" content="Морозов Артём Михайлович, преподаватель модуля Введение в ИТ, младший научный сотрудник, mam@gtifem.ru, 89215550212">
+  <title>Проект MVP: ИИ-проверка и перенос баллов в БРС</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="side">
+      <div class="side__top">
+        <div class="brand">
+          <div class="brand__mark">AI</div>
+          <div class="brand__title">ФЭМ · MVP Bridge</div>
+          <div class="brand__caption">Пакет для представления руководству</div>
+        </div>
+        <button class="icon-btn icon-btn--dark" type="button" data-sidebar-toggle aria-label="Скрыть боковое меню" aria-expanded="true">
+          <span class="menu-icon" aria-hidden="true"><span></span></span>
+        </button>
+      </div>
+      <nav class="nav" aria-label="Разделы">
+        <a class="is-active" href="#summary">Кратко</a>
+        <a href="#done">Что сделано</a>
+        <a href="#evidence">Техническая база</a>
+        <a href="#reference">Справочник</a>
+        <a href="#glossary">Глоссарий</a>
+        <a href="#model">Целевая модель</a>
+        <a href="#roadmap">План запуска</a>
+        <a href="#prompt">Промт</a>
+      </nav>
+      <a class="side-demo-link" href="demo.html">Открыть демо сайта</a>
+      <section class="author-lock" aria-label="Заблокированная ячейка автора проекта">
+        <div class="author-lock__head">
+          <span aria-hidden="true">LOCK</span>
+          <strong>Автор проекта</strong>
+        </div>
+        <p><strong>Морозов Артём Михайлович</strong></p>
+        <p>Преподаватель модуля “Введение в ИТ”, младший научный сотрудник</p>
+        <p><a href="mailto:mam@gtifem.ru">mam@gtifem.ru</a></p>
+        <p><a href="tel:+79215550212">8 921 555 02 12</a></p>
+      </section>
+      <div class="side__footer">
+        Статус: подготовлен демонстрационный контур и база для перехода к предпроектному согласованию.
+      </div>
+    </aside>
+    <button class="sidebar-backdrop" type="button" data-sidebar-close aria-label="Закрыть боковое меню"></button>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar__left">
+          <button class="icon-btn" type="button" data-sidebar-toggle aria-label="Открыть или скрыть боковое меню" aria-expanded="true">
+            <span class="menu-icon" aria-hidden="true"><span></span></span>
+          </button>
+          <div class="topbar__meta">
+            <span class="status-dot"></span>
+            <span>Версия пакета: 27.04.2026 · Europe/Moscow</span>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="btn" href="../docs/fem_har_gap_analysis_mvp_2026-04-26.md">HAR-анализ</a>
+          <a class="btn btn--primary" href="demo.html">Открыть демо</a>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="intro" id="summary">
+          <div class="hero-panel">
+            <div class="eyebrow">Управляемый запуск проекта</div>
+            <h1>ИИ-проверка работ с переносом утвержденных результатов в БРС</h1>
+            <p class="lead">Проект предлагается запускать как третий интеграционный контур между `gtifem.ru` и `xfem.ru`: ИИ помогает проверить работу и подготовить решение, преподаватель утверждает академический результат, bridge переносит числовой балл в незаблокированную ведомость, финальная подпись остается у преподавателя.</p>
+            <div class="tag-row">
+              <span class="tag">human-in-the-loop</span>
+              <span class="tag tag--blue">Rule Pack</span>
+              <span class="tag tag--amber">BRS Adapter</span>
+              <span class="tag tag--red">без автоподписи в MVP</span>
+            </div>
+          </div>
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="metric__value">9</div>
+              <div class="metric__label">HAR-файлов разобрано и сопоставлено</div>
+            </div>
+            <div class="metric">
+              <div class="metric__value">3</div>
+              <div class="metric__label">контура в целевой архитектуре</div>
+            </div>
+            <div class="metric">
+              <div class="metric__value">7</div>
+              <div class="metric__label">ключевых технических разрывов выявлено</div>
+            </div>
+            <div class="metric">
+              <div class="metric__value">5</div>
+              <div class="metric__label">фаз запуска MVP предложено</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="done">
+          <div class="section__head">
+            <div>
+              <h2>Что уже сделано</h2>
+              <p>Это фиксирует проделанную работу в форме, которую можно показать руководителю как доказательство движения от идеи к проекту.</p>
+            </div>
+          </div>
+          <div class="accordion">
+            <details open>
+              <summary>1. Разобрана механика `gtifem.ru`</summary>
+              <div class="details-body">
+                <p>Подтверждено, что модальное окно рецензирования уже встроено в HTML страницы портфолио. Открытие `Проверить` само по себе не является серверным действием.</p>
+                <ul>
+                  <li>`POST /portfolio/` с `action=print` возвращает печатную форму отчета.</li>
+                  <li>Кнопка `Подписать` в печатном окне только раскрывает финальный submit в основном окне.</li>
+                  <li>Реальное сохранение решения преподавателя идет через `POST /portfolio/` с `ACTION=edit`.</li>
+                </ul>
+              </div>
+            </details>
+            <details>
+              <summary>2. Разобрана механика `xfem.ru`</summary>
+              <div class="details-body">
+                <p>Подтверждено, что БРС работает через серверные HTML-формы, а не через чистый JSON API.</p>
+                <ul>
+                  <li>Ведомость создается через `POST /grade/report/custom/custom.php`.</li>
+                  <li>Оценки сохраняются пакетным `POST /grade/report/custom/index.php`.</li>
+                  <li>Подпись или блокировка ведомости выполняется через `POST /grade/report/custom/ajax/lock.php` с `action=locksaved`.</li>
+                </ul>
+              </div>
+            </details>
+            <details>
+              <summary>3. Выявлен безопасный момент интеграции</summary>
+              <div class="details-body">
+                <p>Bridge должен работать после сохраненного академического решения на `gtifem.ru` и до официальной блокировки колонки на `xfem.ru`.</p>
+                <p>Именно эта точка позволяет автоматизировать перенос результата, не снимая с преподавателя ответственность за академическое решение и финальную подпись.</p>
+              </div>
+            </details>
+            <details>
+              <summary>4. Подготовлены проектные документы</summary>
+              <div class="details-body">
+                <ul>
+                  <li>As-Is и HAR Gap Analysis.</li>
+                  <li>To-Be Integration Specification.</li>
+                  <li>Инженерное ТЗ на MVP.</li>
+                  <li>Рабочий план запуска MVP.</li>
+                  <li>Демонстрационный HTML-пакет для руководства.</li>
+                </ul>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <section class="section" id="evidence">
+          <div class="section__head">
+            <div>
+              <h2>Техническая база</h2>
+              <p>Ключевые факты, которые нужно донести до руководства: проект опирается не на предположение, а на реальные точки сохранения, записи и блокировки.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Система</th>
+                  <th>Подтвержденное действие</th>
+                  <th>Endpoint / механизм</th>
+                  <th>Значение для MVP</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>`gtifem.ru`</td>
+                  <td>Сохранение решения преподавателя</td>
+                  <td>`POST /portfolio/`, `ACTION=edit`</td>
+                  <td>Это источник approved academic decision.</td>
+                </tr>
+                <tr>
+                  <td>`gtifem.ru`</td>
+                  <td>Предпросмотр отчета</td>
+                  <td>`POST /portfolio/`, `action=print`</td>
+                  <td>Это UI-ритуал перед подписью, но не durable save.</td>
+                </tr>
+                <tr>
+                  <td>`xfem.ru`</td>
+                  <td>Создание ведомости</td>
+                  <td>`POST /grade/report/custom/custom.php`</td>
+                  <td>Нужен BRS Statement Resolver, потому что созданный `column_id` надо извлекать из HTML после редиректа.</td>
+                </tr>
+                <tr>
+                  <td>`xfem.ru`</td>
+                  <td>Сохранение баллов</td>
+                  <td>`POST /grade/report/custom/index.php`</td>
+                  <td>Запись идет через batch form: нужно менять только целевые `grade_student_column` поля.</td>
+                </tr>
+                <tr>
+                  <td>`xfem.ru`</td>
+                  <td>Официальная блокировка</td>
+                  <td>`POST /grade/report/custom/ajax/lock.php`, `action=locksaved`</td>
+                  <td>В MVP автоматическая запись после lock запрещается, автоподпись не включается.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section" id="reference">
+          <div class="section__head">
+            <div>
+              <h2>Справочная база</h2>
+              <p>Раздел для быстрого управленческого чтения: какие разрывы закрываем, какие решения требуются и какие материалы уже лежат в проектной папке.</p>
+            </div>
+          </div>
+          <div class="accordion">
+            <details open>
+              <summary>Семь ключевых разрывов, которые закрывает проект</summary>
+              <div class="details-body">
+                <ol>
+                  <li>Разные смысловые модели: уровень и рецензия на `gtifem.ru`, числовая ведомость на `xfem.ru`.</li>
+                  <li>Разные идентификаторы студентов: нужен student crosswalk.</li>
+                  <li>Нет универсального перевода уровня в балл: нужен Rule Pack.</li>
+                  <li>Новая ведомость не возвращает удобный `column_id`: нужен HTML resolver.</li>
+                  <li>Запись в БРС идет batch form, а не отдельным API на ячейку.</li>
+                  <li>Официальность возникает на разных этапах: approval на `gtifem.ru`, lock/sign на `xfem.ru`.</li>
+                  <li>Нет общего transfer id: нужен собственный audit ledger.</li>
+                </ol>
+              </div>
+            </details>
+            <details>
+              <summary>Решения, которые нужно утвердить до разработки</summary>
+              <div class="details-body">
+                <ul>
+                  <li>Пилотная дисциплина и типы работ.</li>
+                  <li>Ответственный за Rule Pack и методическую шкалу.</li>
+                  <li>Правила сопоставления студентов между системами.</li>
+                  <li>Режим MVP: draft-only, assisted transfer или automatic fill into unlocked statement.</li>
+                  <li>Границы ответственности преподавателя при переносе результата.</li>
+                  <li>Регламент обработки ошибок, спорных кейсов и повторной проверки.</li>
+                </ul>
+              </div>
+            </details>
+            <details>
+              <summary>Риски и управляемые ограничения</summary>
+              <div class="details-body">
+                <p>Главный риск не в ИИ как таковом, а в интеграционной хрупкости двух HTML-first систем. Поэтому MVP должен начинаться с ограниченного контура и жестких guardrails.</p>
+                <ul>
+                  <li>Не писать в заблокированную ведомость.</li>
+                  <li>Не включать автоподпись на первом этапе.</li>
+                  <li>Не полагаться только на ФИО при поиске студента.</li>
+                  <li>Не хардкодить `sesskey`, column id и временные значения из HAR.</li>
+                  <li>Все операции переноса фиксировать в журнале.</li>
+                </ul>
+              </div>
+            </details>
+            <details>
+              <summary>Комплект подготовленных материалов</summary>
+              <div class="details-body">
+                <ul>
+                  <li><a href="../docs/fem_har_gap_analysis_mvp_2026-04-26.md">HAR Gap Analysis в Markdown</a></li>
+                  <li><a href="../docs/fem_har_gap_analysis_mvp_2026-04-26.docx">HAR Gap Analysis в DOCX</a></li>
+                  <li><a href="../docs/fem_tobe_integration_spec_mvp_2026-04-26.docx">To-Be Integration Specification</a></li>
+                  <li><a href="../docs/fem_mvp_engineering_spec_2026-04-26.docx">Инженерное ТЗ на MVP</a></li>
+                  <li><a href="../docs/fem_ai_mvp_workplan_2026.docx">Рабочий план запуска MVP</a></li>
+                  <li><a href="demo.html">HTML-демо будущего рабочего сайта</a></li>
+                </ul>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <section class="section" id="glossary">
+          <div class="section__head">
+            <div>
+              <h2>Глоссарий проекта</h2>
+              <p>Единый словарь терминов, тезисов и англоязычных слов, которые встречаются в материалах MVP. Раздел рассчитан на быстрое объяснение руководству, методистам и разработчикам.</p>
+            </div>
+          </div>
+
+          <div class="glossary-tools">
+            <input class="search-field" type="search" data-glossary-search placeholder="Найти термин: Rule Pack, BRS Adapter, audit, lock...">
+            <div class="filter-row" aria-label="Фильтры глоссария">
+              <button class="filter-chip is-active" type="button" data-glossary-filter="all">Все</button>
+              <button class="filter-chip" type="button" data-glossary-filter="ai">ИИ и правила</button>
+              <button class="filter-chip" type="button" data-glossary-filter="integration">Интеграция</button>
+              <button class="filter-chip" type="button" data-glossary-filter="data">Данные</button>
+              <button class="filter-chip" type="button" data-glossary-filter="governance">Управление</button>
+              <button class="filter-chip" type="button" data-glossary-filter="ux">UI/UX</button>
+            </div>
+          </div>
+
+          <div class="glossary-grid">
+            <details class="glossary-card" data-glossary-item data-category="governance" data-terms="mvp minimum viable product минимально жизнеспособный продукт запуск пилот">
+              <summary><span class="glossary-title"><strong>MVP</strong><span>Minimum Viable Product, минимально жизнеспособный продукт</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">управление</span><span class="tag tag--blue">запуск</span></div>
+                <p>Первая рабочая версия системы, которая доказывает ценность проекта на ограниченном контуре. Для этого проекта MVP не означает “все функции сразу”; он означает проверку полного маршрута от работы студента до контролируемого переноса балла.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="governance" data-terms="as-is текущий процесс как есть обследование">
+              <summary><span class="glossary-title"><strong>As-Is</strong><span>описание текущего состояния “как есть”</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">аналитика</span></div>
+                <p>Карта того, как процесс работает сейчас: где преподаватель проверяет работу, где сохраняет рецензию, где вручную переносит балл и где подписывает ведомость.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="governance" data-terms="to-be целевая модель будущий процесс архитектура">
+              <summary><span class="glossary-title"><strong>To-Be</strong><span>целевая модель будущего процесса</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">архитектура</span></div>
+                <p>Описание того, как процесс должен работать после внедрения: ИИ формирует draft, преподаватель утверждает, bridge переносит балл, БРС остается официальной системой фиксации.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="ai" data-terms="rule pack правила шкала критерии уровни version версия">
+              <summary><span class="glossary-title"><strong>Rule Pack</strong><span>версионированный пакет правил оценивания</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag tag--blue">ИИ</span><span class="tag">методика</span></div>
+                <p>Набор правил, по которым система понимает критерии работы, уровни, ограничения применимости и перевод уровня в числовой балл. Это методическое ядро проекта: модель не должна импровизировать вне утвержденных правил.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="ai" data-terms="human-in-the-loop человек в контуре преподаватель контроль ответственность">
+              <summary><span class="glossary-title"><strong>Human-in-the-loop</strong><span>человек остается в критических точках решения</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag tag--amber">контроль</span></div>
+                <p>Принцип, по которому ИИ помогает, но не заменяет преподавателя в официальных решениях. В MVP преподаватель утверждает академический результат и сам выполняет финальную подпись БРС.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="ai" data-terms="ai draft черновик рекомендация ии проект решения рецензия">
+              <summary><span class="glossary-title"><strong>AI draft</strong><span>черновик рекомендации ИИ</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag tag--blue">ИИ</span><span class="tag">teacher workflow</span></div>
+                <p>Предварительное предложение системы: уровень, комментарий, confidence и возможный балл. Это не финальное решение, а материал для преподавателя.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="ai" data-terms="confidence уверенность достоверность риск ручная проверка">
+              <summary><span class="glossary-title"><strong>Confidence</strong><span>оценка уверенности системы</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag tag--blue">ИИ</span></div>
+                <p>Показатель того, насколько система уверена в своей рекомендации. Низкий confidence должен не блокировать преподавателя, а подсвечивать необходимость внимательной ручной проверки.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="faculty-side gtifem portfolio факультетский контур портфолио">
+              <summary><span class="glossary-title"><strong>Faculty-side</strong><span>факультетский контур `gtifem.ru`</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">gtifem.ru</span></div>
+                <p>Сторона процесса, где живут работы студентов, компетенции, рецензии, уровневые решения и событие преподавательского утверждения.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="brs-side xfem брс ведомость баллы подпись">
+              <summary><span class="glossary-title"><strong>BRS-side</strong><span>контур БРС `xfem.ru`</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">xfem.ru</span></div>
+                <p>Официальная сторона фиксации числовых баллов: ведомости, колонки, сохранение оценок, агрегаты, подпись и блокировка.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="bridge интеграционный мост перенос между системами">
+              <summary><span class="glossary-title"><strong>Bridge</strong><span>интеграционный мост между `gtifem.ru` и `xfem.ru`</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag tag--amber">интеграция</span></div>
+                <p>Новый слой проекта, который превращает утвержденное академическое решение в контролируемую запись числового балла в БРС.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="faculty connector коннектор чтение gtifem событие">
+              <summary><span class="glossary-title"><strong>Faculty Connector</strong><span>модуль получения данных из faculty-side</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">connector</span></div>
+                <p>Компонент, который читает контекст работы, метаданные, файл, статус и сохраненное решение преподавателя на стороне `gtifem.ru`.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="brs adapter адаптер xfem запись ведомость балл">
+              <summary><span class="glossary-title"><strong>BRS Adapter</strong><span>модуль безопасной записи в БРС</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag tag--amber">интеграция</span></div>
+                <p>Компонент, который находит студента, целевую ведомость и колонку, проверяет lock-state и записывает балл через текущий механизм `xfem.ru`.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="data" data-terms="approved transfer record transfer запись утвержденного переноса">
+              <summary><span class="glossary-title"><strong>Approved Transfer Record</strong><span>запись утвержденного переноса</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">data model</span></div>
+                <p>Главная сущность bridge-слоя: фиксирует work_id, student crosswalk, Rule Pack version, уровень, числовой балл, целевую ведомость, результат записи и audit trail.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="data" data-terms="student crosswalk сопоставление студентов идентификаторы фио">
+              <summary><span class="glossary-title"><strong>Student Crosswalk</strong><span>таблица сопоставления студентов</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">data</span><span class="tag tag--red">критично</span></div>
+                <p>Связь между faculty-side student id и BRS-side student id. Нужна потому, что идентификаторы в `gtifem.ru` и `xfem.ru` не совпадают, а одного ФИО недостаточно для безопасной записи.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="data" data-terms="audit ledger журнал аудит след операции">
+              <summary><span class="glossary-title"><strong>Audit Ledger</strong><span>журнал доказуемых действий системы</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">аудит</span></div>
+                <p>Журнал, где фиксируется каждое решение, версия правил, попытка переноса, успешная запись, ошибка или отказ из-за блокировки ведомости.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="idempotency идемпотентность повторная отправка без дублей">
+              <summary><span class="glossary-title"><strong>Idempotency</strong><span>безопасность повторного выполнения</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag tag--amber">надежность</span></div>
+                <p>Свойство операции, при котором повторная отправка того же результата не создает дублей, не завышает баллы и не ломает историю переноса.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="lock guard блокировка подпись locksaved запрет записи">
+              <summary><span class="glossary-title"><strong>Lock Guard</strong><span>защита от записи в подписанную ведомость</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag tag--red">защита</span></div>
+                <p>Проверка, которая запрещает автоматическую запись после официальной подписи или блокировки колонки в БРС.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="batch form post пакетная html форма save scores">
+              <summary><span class="glossary-title"><strong>Batch form post</strong><span>пакетная отправка HTML-формы</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">HTML-first</span></div>
+                <p>Механизм `xfem.ru`, где даже изменение одной оценки сохраняется большой формой со многими полями `grade_*` и `oldgrade_*`, а не отдельным API-запросом на одну ячейку.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="html-first system html first нет api страницы формы">
+              <summary><span class="glossary-title"><strong>HTML-first system</strong><span>система, где главным контрактом является HTML-страница</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">legacy</span></div>
+                <p>Означает, что интеграция вынуждена работать с HTML-формами, hidden-полями, ссылками и DOM-структурами, потому что стабильного JSON API может не быть.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="endpoint url метод get post точка вызова">
+              <summary><span class="glossary-title"><strong>Endpoint</strong><span>адрес и метод серверного действия</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">техника</span></div>
+                <p>Конкретная точка вызова, например `POST /portfolio/` или `POST /grade/report/custom/index.php`, через которую браузер сохраняет решение или балл.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="data" data-terms="column_id column id колонка ведомость sortitemid eid">
+              <summary><span class="glossary-title"><strong>column_id</strong><span>идентификатор колонки ведомости в БРС</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">xfem</span></div>
+                <p>Числовой идентификатор ведомости/колонки, который встречается как `sortitemid=493222`, `grade_student_493222` и `eid=i493222`.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="data" data-terms="courseid course id курс дисциплина xfem">
+              <summary><span class="glossary-title"><strong>courseid</strong><span>идентификатор курса в `xfem.ru`</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">xfem</span></div>
+                <p>Параметр БРС, который указывает конкретный курс или дисциплину. В HAR встречался пример `courseid=12636`.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="data" data-terms="categid category категория лекции практика">
+              <summary><span class="glossary-title"><strong>categid</strong><span>категория ведомости в БРС</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">xfem</span></div>
+                <p>Параметр категории, например лекции, практика или другой раздел оценивания. Нужен при создании новой ведомости.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="data" data-terms="typeid type id тип ведомости лекц прз лбрт">
+              <summary><span class="glossary-title"><strong>typeid</strong><span>тип ведомости внутри категории</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">xfem</span></div>
+                <p>Параметр, который выбирает конкретный тип ведомости, например `ЛЕКЦ`. Его нельзя угадывать: он должен браться из формы или справочника.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="sesskey session key сессия csrf токен">
+              <summary><span class="glossary-title"><strong>sesskey</strong><span>сессионный ключ действия в `xfem.ru`</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag tag--red">безопасность</span></div>
+                <p>Временный ключ, который используется в формах и ссылках БРС. Его нельзя хардкодить из HAR: адаптер должен получать актуальное значение из текущей авторизованной сессии.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="action edit faculty approval сохранение рецензия">
+              <summary><span class="glossary-title"><strong>`ACTION=edit`</strong><span>реальное сохранение решения на `gtifem.ru`</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">gtifem</span><span class="tag tag--amber">approval</span></div>
+                <p>Ключевой HAR-факт: именно этот POST фиксирует преподавательское решение, уровень, тему и рецензию. Это правильный источник события для bridge.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="action print preview отчет предпросмотр подпись">
+              <summary><span class="glossary-title"><strong>`action=print`</strong><span>предпросмотр отчета на `gtifem.ru`</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">gtifem</span></div>
+                <p>Запрос возвращает печатную форму отчета. Это важный UI-шаг, но сам по себе он не является долговременным сохранением решения.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="locksaved action подпись блокировка ведомость ajax lock">
+              <summary><span class="glossary-title"><strong>`action=locksaved`</strong><span>подпись или блокировка заполненной ведомости</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag tag--red">official state</span></div>
+                <p>Официальный переход БРС в состояние подписанной или заблокированной ведомости. После этого автоматическая запись в MVP должна быть запрещена.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="ux" data-terms="ui ux интерфейс пользовательский опыт экран сценарий">
+              <summary><span class="glossary-title"><strong>UI/UX</strong><span>интерфейс и пользовательский сценарий</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">прототип</span></div>
+                <p>То, как преподаватель видит очередь работ, рекомендацию ИИ, расшифровку, кнопку утверждения, статус переноса и ошибки БРС.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="governance" data-terms="governance управление ответственность регламент решение">
+              <summary><span class="glossary-title"><strong>Governance</strong><span>управление правилами и ответственностью</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">регламент</span></div>
+                <p>Набор управленческих правил: кто утверждает Rule Pack, кто отвечает за ошибки, кто допускает пилот, кто принимает решение о масштабировании.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="governance" data-terms="kpi показатели пилот эффективность время ошибки качество">
+              <summary><span class="glossary-title"><strong>KPI пилота</strong><span>показатели успешности запуска</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">пилот</span></div>
+                <p>Измеримые признаки успеха: сокращение времени проверки, доля ручных исправлений, число ошибок переноса, совпадение draft с решением преподавателя, стабильность адаптера.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="governance" data-terms="discovery обследование уточнение контура предпроект">
+              <summary><span class="glossary-title"><strong>Discovery</strong><span>предпроектное обследование</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">фаза 0</span></div>
+                <p>Этап, на котором команда подтверждает реальные процессы, данные, ограничения, роли, пилотную дисциплину и недостающие HAR-сценарии.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="data" data-terms="work registry реестр работ очередь статусы">
+              <summary><span class="glossary-title"><strong>Work Registry</strong><span>реестр работ и статусов</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">backend</span></div>
+                <p>Внутренняя таблица или сервис, где система хранит работы, версии анализа, статусы проверки, решения преподавателя и готовность к переносу.</p>
+              </div>
+            </details>
+
+            <details class="glossary-card" data-glossary-item data-category="integration" data-terms="parser resolver парсер резолвер html колонка ведомость">
+              <summary><span class="glossary-title"><strong>Parser / Resolver</strong><span>модуль разбора HTML и поиска нужной сущности</span></span></summary>
+              <div class="details-body">
+                <div class="glossary-meta"><span class="tag">интеграция</span></div>
+                <p>Parser извлекает данные из HTML, resolver сопоставляет их с нужной целью: студентом, ведомостью, колонкой или формой сохранения.</p>
+              </div>
+            </details>
+          </div>
+          <div class="empty-state" data-glossary-empty hidden>По текущему поиску ничего не найдено. Попробуйте другой термин или сбросьте фильтр на “Все”.</div>
+        </section>
+
+        <section class="section" id="model">
+          <div class="section__head">
+            <div>
+              <h2>Целевая модель MVP</h2>
+              <p>Будущая система должна быть не чат-ботом, а управляемым интеграционным контуром с понятной ответственностью.</p>
+            </div>
+          </div>
+          <div class="grid grid--3">
+            <article class="card">
+              <h3>Faculty Connector</h3>
+              <p>Читает контекст работы, метаданные, решение преподавателя и событие `ACTION=edit`.</p>
+              <div class="tag-row"><span class="tag">source event</span><span class="tag tag--blue">portfolio</span></div>
+            </article>
+            <article class="card">
+              <h3>Rule Pack + AI</h3>
+              <p>Формирует проект уровня, рецензию, объяснение и числовой балл по версионированным правилам.</p>
+              <div class="tag-row"><span class="tag">rules-first</span><span class="tag tag--amber">explainable</span></div>
+            </article>
+            <article class="card">
+              <h3>BRS Adapter</h3>
+              <p>Находит студента, ведомость, колонку, проверяет lock-state и пишет балл через текущую форму БРС.</p>
+              <div class="tag-row"><span class="tag">idempotent</span><span class="tag tag--red">lock guard</span></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="roadmap">
+          <div class="section__head">
+            <div>
+              <h2>План запуска</h2>
+              <p>Предлагаемый маршрут переводит проект из презентации в управляемую разработку без скачка сразу к полной автоматизации.</p>
+            </div>
+          </div>
+          <div class="timeline">
+            <div class="timeline__item">
+              <div class="timeline__phase">Фаза 0</div>
+              <div>
+                <strong>Discovery и выбор пилотного контура</strong>
+                <p>Переснять логин `xfem.ru`, подтвердить пилотную дисциплину, список работ, роли и ограничения. Результат: финальная карта данных и сценариев.</p>
+              </div>
+            </div>
+            <div class="timeline__item">
+              <div class="timeline__phase">Фаза 1</div>
+              <div>
+                <strong>Проектирование MVP</strong>
+                <p>Утвердить Rule Pack schema, student crosswalk, transfer record, статусы, UI-сценарии и критерии приемки.</p>
+              </div>
+            </div>
+            <div class="timeline__item">
+              <div class="timeline__phase">Фаза 2</div>
+              <div>
+                <strong>Разработка ядра</strong>
+                <p>Собрать Work Registry, AI draft, teacher approval, audit ledger и режим подготовки результата без записи в БРС.</p>
+              </div>
+            </div>
+            <div class="timeline__item">
+              <div class="timeline__phase">Фаза 3</div>
+              <div>
+                <strong>BRS Adapter</strong>
+                <p>Реализовать запись в незаблокированную ведомость, проверку повторов, lock guard и верификацию после записи.</p>
+              </div>
+            </div>
+            <div class="timeline__item">
+              <div class="timeline__phase">Фаза 4</div>
+              <div>
+                <strong>Пилот и масштабирование</strong>
+                <p>Запустить ограниченную группу, собрать KPI, исправить Rule Pack и подготовить решение о расширении.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="prompt">
+          <div class="section__head">
+            <div>
+              <h2>Подробный промт для запуска работ</h2>
+              <p>Этот текст можно использовать как постановку для аналитика, разработчика или следующего ИИ-агента, который должен продолжить проект.</p>
+            </div>
+          </div>
+          <div class="prompt-box">
+            <div class="prompt-box__head">
+              <strong>Execution prompt</strong>
+              <button class="btn" type="button" data-copy-target="#execution-prompt">Копировать</button>
+            </div>
+            <pre id="execution-prompt">Ты выступаешь как проектная команда для запуска MVP факультетской системы ИИ-проверки работ и переноса утвержденных результатов в БРС.
+
+Контекст:
+- есть две существующие системы: `gtifem.ru` и `xfem.ru`;
+- `gtifem.ru` содержит работы студентов, рецензии, компетенции, уровневые решения и преподавательское утверждение;
+- `xfem.ru` содержит ведомости, числовые баллы, batch-save форм, подпись и блокировку;
+- по HAR подтверждено, что durable faculty-side approval возникает на `POST /portfolio/` с `ACTION=edit`;
+- по HAR подтверждено, что BRS score save идет через `POST /grade/report/custom/index.php`;
+- по HAR подтверждено, что official lock/sign идет через `POST /grade/report/custom/ajax/lock.php` с `action=locksaved`;
+- в MVP нельзя автоматически подписывать ведомость и нельзя писать в уже заблокированную колонку.
+
+Что уже сделано:
+1. Разобрана механика `gtifem.ru`: модальное окно, preview report, финальное сохранение решения.
+2. Разобрана механика `xfem.ru`: создание ведомости, edit mode, batch form save, lock endpoint.
+3. Выделены разрывы: разные student id, нет универсальной формулы уровень -> балл, нет API created column id, запись идет через HTML-формы, нужна идемпотентность.
+4. Подготовлена целевая логика: approved academic decision -> transfer record -> rule-based numeric conversion -> BRS write -> ручная подпись преподавателя.
+
+Задача:
+Подготовить рабочий план реализации MVP, затем перейти к разработке демонстрационного и пилотного контура.
+
+Обязательные deliverables:
+1. Data model:
+   - Work
+   - FacultyDecision
+   - RulePack
+   - AiAssessmentDraft
+   - ApprovedTransferRecord
+   - StudentCrosswalk
+   - BrsStatement
+   - BrsWriteAttempt
+   - AuditEvent
+2. UI/UX:
+   - очередь работ;
+   - карточка рекомендации ИИ;
+   - окно teacher approval;
+   - статус готовности к БРС;
+   - журнал переноса;
+   - экран ошибок и исключений.
+3. Integration:
+   - Faculty Connector;
+   - BRS Statement Resolver;
+   - BRS Form Writer;
+   - Lock Guard;
+   - idempotency strategy.
+4. Rule Pack:
+   - структура правил;
+   - версия;
+   - применимость;
+   - шкала уровней;
+   - перевод уровня в числовой балл;
+   - ограничения и confidence.
+5. Pilot plan:
+   - одна дисциплина;
+   - один-два типа работ;
+   - ограниченный преподавательский контур;
+   - KPI: время проверки, доля ручных исправлений, ошибки переноса, совпадение решения преподавателя с draft.
+
+Реализационные ограничения:
+- сохранять преподавателя в точках официальной ответственности;
+- не делать автономную подпись БРС в MVP;
+- не полагаться только на ФИО при сопоставлении студентов;
+- не писать в заблокированные ведомости;
+- все записи делать идемпотентно;
+- все решения логировать с версией Rule Pack.
+
+Первый практический шаг:
+Собрать clickable prototype и технический skeleton:
+- статический UI для руководства и пилота;
+- mock transfer flow;
+- schema transfer record;
+- parser/resolver для HTML-структуры BRS на тестовых данных;
+- журнал аудита;
+- checklist для пересъемки недостающего HAR по логину `xfem.ru`.</pre>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div class="toast" data-toast></div>
+  <script src="assets/app.js"></script>
+</body>
+</html>
