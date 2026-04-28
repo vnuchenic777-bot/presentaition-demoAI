@@ -6,7 +6,7 @@
   <meta name="author" content="Морозов Артём Михайлович">
   <meta name="project-author" content="Морозов Артём Михайлович, преподаватель модуля Введение в ИТ, младший научный сотрудник, mam@gtifem.ru, 89215550212">
   <title>Проект MVP: ИИ-проверка и перенос баллов в БРС</title>
-  <link rel="stylesheet" href="assets/styles.css">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="shell">
@@ -24,6 +24,8 @@
       <nav class="nav" aria-label="Разделы">
         <a class="is-active" href="#summary">Кратко</a>
         <a href="#done">Что сделано</a>
+        <a href="#har-analysis">HAR-анализ</a>
+        <a href="#document-center">Документы</a>
         <a href="#evidence">Техническая база</a>
         <a href="#reference">Справочник</a>
         <a href="#glossary">Глоссарий</a>
@@ -60,7 +62,7 @@
           </div>
         </div>
         <div class="actions">
-          <a class="btn" href="../docs/fem_har_gap_analysis_mvp_2026-04-26.md">HAR-анализ</a>
+          <a class="btn" href="#har-analysis">HAR-анализ</a>
           <a class="btn btn--primary" href="demo.html">Открыть демо</a>
         </div>
       </header>
@@ -144,6 +146,219 @@
                   <li>Инженерное ТЗ на MVP.</li>
                   <li>Рабочий план запуска MVP.</li>
                   <li>Демонстрационный HTML-пакет для руководства.</li>
+                </ul>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <section class="section" id="har-analysis">
+          <div class="section__head">
+            <div>
+              <div class="eyebrow">Evidence package / HAR</div>
+              <h2>HAR-аналитика и пакет разобранных данных</h2>
+              <p>Отдельный раздел для демонстрации руководству: какие браузерные сценарии были сняты, какие серверные действия найдены и почему текущая архитектура MVP опирается на реальные запросы, а не на предположение.</p>
+            </div>
+          </div>
+
+          <div class="har-board">
+            <article class="har-snapshot">
+              <span class="tag tag--blue">Пакет анализа</span>
+              <strong>9 HAR-файлов</strong>
+              <p>Разобраны и сопоставлены действия преподавателя в `gtifem.ru` и операции с ведомостями в `xfem.ru`.</p>
+            </article>
+            <article class="har-snapshot">
+              <span class="tag">Источник фактов</span>
+              <strong>HTML-form flow</strong>
+              <p>Ключевые операции идут через формы, hidden-поля и POST-запросы, поэтому MVP должен иметь parser/resolver.</p>
+            </article>
+            <article class="har-snapshot">
+              <span class="tag tag--amber">Главный вывод</span>
+              <strong>Запись до lock</strong>
+              <p>Безопасная точка переноса балла находится до официальной блокировки ведомости и после утверждения преподавателем.</p>
+            </article>
+          </div>
+
+          <div class="grid grid--2 har-package">
+            <article class="card">
+              <h3>Что входит в HAR-пакет</h3>
+              <p>В презентацию встроены управленческие выводы из технических материалов: As-Is карта процесса, HAR Gap Analysis, экранные заметки, To-Be спецификация и инженерное ТЗ MVP.</p>
+              <div class="tag-row">
+                <span class="tag">As-Is</span>
+                <span class="tag tag--blue">HAR Gap Analysis</span>
+                <span class="tag tag--amber">To-Be</span>
+                <span class="tag">Engineering spec</span>
+              </div>
+            </article>
+            <article class="card">
+              <h3>Как читать этот раздел</h3>
+              <p>Сначала смотрим доказанные endpoint-действия, затем риски интеграции, затем техническую базу. Это помогает быстро объяснить, почему нужен не просто ИИ-чат, а полноценный bridge между системами.</p>
+              <div class="tag-row">
+                <span class="tag">endpoint</span>
+                <span class="tag">payload</span>
+                <span class="tag tag--red">lock guard</span>
+                <span class="tag tag--blue">audit</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="document-center" id="document-center">
+            <div class="document-center__hero">
+              <div>
+                <div class="eyebrow">Download center</div>
+                <h3>Справочные материалы и проектные документы</h3>
+                <p>Этот блок нужен для передачи проекта руководству: можно скачать весь пакет одним архивом или открыть отдельный документ по конкретному вопросу.</p>
+              </div>
+              <a class="btn btn--primary" href="downloads/project-documents.zip" download>Скачать весь пакет ZIP</a>
+            </div>
+
+            <div class="document-grid">
+              <article class="document-card">
+                <div>
+                  <span class="tag tag--blue">HAR</span>
+                  <h4>HAR Gap Analysis</h4>
+                  <p>Endpoint-выводы, разрывы интеграции, риски HTML-first систем и безопасная точка переноса результата.</p>
+                </div>
+                <div class="document-actions">
+                  <a class="btn" href="docs/fem_har_gap_analysis_mvp_2026-04-26.html" target="_blank" rel="noopener">Открыть HTML</a>
+                  <a class="btn" href="docs/fem_har_gap_analysis_mvp_2026-04-26.docx" download>DOCX</a>
+                  <a class="btn" href="docs/fem_har_gap_analysis_mvp_2026-04-26.md" download>MD</a>
+                </div>
+              </article>
+
+              <article class="document-card">
+                <div>
+                  <span class="tag">As-Is</span>
+                  <h4>Карта текущего процесса</h4>
+                  <p>Как процесс работает сейчас: проверка, рецензия, ручной перенос балла и подпись ведомости.</p>
+                </div>
+                <div class="document-actions">
+                  <a class="btn" href="docs/fem_asis_process_map_2026-04-26.docx" download>DOCX</a>
+                  <a class="btn" href="docs/fem_asis_process_map_2026-04-26.txt" download>TXT</a>
+                </div>
+              </article>
+
+              <article class="document-card">
+                <div>
+                  <span class="tag tag--amber">Screens</span>
+                  <h4>Экранные заметки</h4>
+                  <p>Наблюдения по интерфейсам и действиям пользователя, которые помогают объяснить логику сценария.</p>
+                </div>
+                <div class="document-actions">
+                  <a class="btn" href="docs/fem_asis_screen_notes_2026-04-26.txt" download>TXT</a>
+                </div>
+              </article>
+
+              <article class="document-card">
+                <div>
+                  <span class="tag tag--blue">To-Be</span>
+                  <h4>Целевая интеграционная модель</h4>
+                  <p>Будущая архитектура: Faculty Connector, Rule Pack, Approved Transfer Record, BRS Adapter и Audit Ledger.</p>
+                </div>
+                <div class="document-actions">
+                  <a class="btn" href="docs/fem_tobe_integration_spec_mvp_2026-04-26.docx" download>DOCX</a>
+                  <a class="btn" href="docs/fem_tobe_integration_spec_mvp_2026-04-26.txt" download>TXT</a>
+                </div>
+              </article>
+
+              <article class="document-card">
+                <div>
+                  <span class="tag tag--red">ТЗ</span>
+                  <h4>Инженерная спецификация MVP</h4>
+                  <p>Техническая постановка: сущности, ограничения, адаптеры, guardrails, критерии приемки и этапы разработки.</p>
+                </div>
+                <div class="document-actions">
+                  <a class="btn" href="docs/fem_mvp_engineering_spec_2026-04-26.docx" download>DOCX</a>
+                  <a class="btn" href="docs/fem_mvp_engineering_spec_2026-04-26.txt" download>TXT</a>
+                </div>
+              </article>
+
+              <article class="document-card">
+                <div>
+                  <span class="tag">Roadmap</span>
+                  <h4>Рабочий план запуска</h4>
+                  <p>Пошаговый маршрут перехода от презентации к предпроектному согласованию, пилоту и разработке.</p>
+                </div>
+                <div class="document-actions">
+                  <a class="btn" href="docs/fem_ai_mvp_workplan_2026.docx" download>DOCX</a>
+                  <a class="btn" href="docs/fem_ai_mvp_workplan_2026.txt" download>TXT</a>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <div class="table-wrap har-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>HAR-наблюдение</th>
+                  <th>Подтвержденный запрос</th>
+                  <th>Что это доказывает</th>
+                  <th>Решение для MVP</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Открытие печатной формы проверки</td>
+                  <td>`POST /portfolio/`, `action=print`</td>
+                  <td>Это предпросмотр отчета, а не финальное сохранение решения.</td>
+                  <td>Не считать preview событием переноса.</td>
+                </tr>
+                <tr>
+                  <td>Сохранение рецензии и уровня</td>
+                  <td>`POST /portfolio/`, `ACTION=edit`</td>
+                  <td>Это durable approval преподавателя на стороне faculty-side.</td>
+                  <td>Запускать transfer record только после этого события.</td>
+                </tr>
+                <tr>
+                  <td>Создание ведомости в БРС</td>
+                  <td>`POST /grade/report/custom/custom.php`</td>
+                  <td>Новая колонка появляется через HTML-процесс, а не через удобный JSON API.</td>
+                  <td>Автоматически создавать незаблокированную колонку и извлекать `column_id` из HTML.</td>
+                </tr>
+                <tr>
+                  <td>Пакетное сохранение баллов</td>
+                  <td>`POST /grade/report/custom/index.php`</td>
+                  <td>БРС сохраняет не одну ячейку, а большую batch form.</td>
+                  <td>Менять только целевые `grade_student_column` поля и сверять `oldgrade_*`.</td>
+                </tr>
+                <tr>
+                  <td>Финальная подпись/блокировка</td>
+                  <td>`POST /grade/report/custom/ajax/lock.php`, `action=locksaved`</td>
+                  <td>После lock ведомость становится официально закрытой.</td>
+                  <td>В MVP запретить автозапись в заблокированную ведомость и не включать автоподпись.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="accordion har-accordion">
+            <details open>
+              <summary>Пакет скачанных и проанализированных данных</summary>
+              <div class="details-body">
+                <ul>
+                  <li>`HAR Gap Analysis`: ключевые endpoint, payload-поля, риски HTML-first интеграции.</li>
+                  <li>`As-Is Process Map`: текущий маршрут преподавателя от проверки работы до ручной записи балла.</li>
+                  <li>`Screen Notes`: экранные наблюдения по действиям в `gtifem.ru` и `xfem.ru`.</li>
+                  <li>`To-Be Integration Spec`: целевой bridge, transfer record, BRS Adapter и audit ledger.</li>
+                  <li>`Engineering Spec`: техническое ТЗ на MVP, ограничения, фазы и критерии приемки.</li>
+                </ul>
+              </div>
+            </details>
+            <details>
+              <summary>Что HAR-анализ уже подтвердил</summary>
+              <div class="details-body">
+                <p>Подтверждена рабочая интеграционная точка: ИИ и bridge должны включаться после сохранения решения преподавателя и до блокировки БРС. Это сохраняет преподавателя в официальной зоне ответственности и позволяет автоматизировать перенос без опасной автоподписи.</p>
+              </div>
+            </details>
+            <details>
+              <summary>Что еще нужно доснять перед разработкой</summary>
+              <div class="details-body">
+                <ul>
+                  <li>Свежий логин и получение актуального `sesskey` в `xfem.ru`.</li>
+                  <li>Повторное открытие уже созданной ведомости и проверка lock-state.</li>
+                  <li>Ошибочный сценарий: попытка записи в заблокированную ведомость.</li>
+                  <li>Сценарий массового сохранения нескольких студентов в одной колонке.</li>
                 </ul>
               </div>
             </details>
@@ -255,11 +470,9 @@
               <summary>Комплект подготовленных материалов</summary>
               <div class="details-body">
                 <ul>
-                  <li><a href="../docs/fem_har_gap_analysis_mvp_2026-04-26.md">HAR Gap Analysis в Markdown</a></li>
-                  <li><a href="../docs/fem_har_gap_analysis_mvp_2026-04-26.docx">HAR Gap Analysis в DOCX</a></li>
-                  <li><a href="../docs/fem_tobe_integration_spec_mvp_2026-04-26.docx">To-Be Integration Specification</a></li>
-                  <li><a href="../docs/fem_mvp_engineering_spec_2026-04-26.docx">Инженерное ТЗ на MVP</a></li>
-                  <li><a href="../docs/fem_ai_mvp_workplan_2026.docx">Рабочий план запуска MVP</a></li>
+                  <li><a href="#har-analysis">HAR Gap Analysis: ключевые выводы встроены в отдельный раздел HAR-аналитики</a></li>
+                  <li><a href="#model">To-Be Integration Specification: целевая модель встроена в этот раздел</a></li>
+                  <li><a href="#roadmap">Инженерное ТЗ и рабочий план: основные шаги встроены в план запуска</a></li>
                   <li><a href="demo.html">HTML-демо будущего рабочего сайта</a></li>
                 </ul>
               </div>
@@ -726,6 +939,6 @@
     </main>
   </div>
   <div class="toast" data-toast></div>
-  <script src="assets/app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

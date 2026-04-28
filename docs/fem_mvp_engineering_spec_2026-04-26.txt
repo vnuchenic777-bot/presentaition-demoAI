@@ -1,0 +1,1506 @@
+ИНЖЕНЕРНОЕ ТЗ НА MVP
+Факультетская система ИИ-проверки работ и переноса результатов в БРС
+
+Дата: 26.04.2026
+Версия: draft v1
+
+
+1. НАЗНАЧЕНИЕ ДОКУМЕНТА
+
+Настоящий документ фиксирует инженерное техническое задание на MVP-систему, которая должна стать мостом между:
+
+- faculty-side контуром `gtifem.ru`, где живут работы студентов, компетенции, рецензии, уровневые решения и преподавательское одобрение;
+- BRS-side контуром `xfem.ru`, где живут ведомости, колонки, числовые баллы, сохранение и подпись/блокировка.
+
+Документ предназначен для перехода от концепции и общего To-Be описания к проектированию рабочей системы.
+
+Цель документа:
+
+- задать границы MVP;
+- определить состав модулей;
+- формализовать схемы данных;
+- описать внутренние API и события;
+- определить teacher approval;
+- описать требования к bridge-сервису записи в БРС;
+- задать нефункциональные ограничения и критерии приемки.
+
+
+2. ЦЕЛЬ MVP
+
+MVP должен обеспечить контролируемый контур, в котором:
+
+1. работа студента извлекается из faculty-side процесса;
+2. работа анализируется ИИ по заданным критериям и Rule Pack;
+3. формируется draft-оценивание:
+   - проект уровня;
+   - проект рецензии;
+   - проект числового балла;
+4. преподаватель утверждает академическое решение;
+5. система создает approved transfer record;
+6. bridge-сервис находит или создает нужную ведомость в БРС;
+7. bridge-сервис безопасно записывает числовой балл в незаблокированную колонку;
+8. преподаватель выполняет окончательную официальную подпись на стороне БРС.
+
+Ключевая цель MVP:
+
+сократить ручной труд преподавателя на этапах проверки, формулировки рецензии, конвертации уровня в балл и переноса результата в БРС, не убирая преподавателя из точек официального одобрения.
+
+
+3. ЖЕСТКИЕ ГРАНИЦЫ MVP
+
+В MVP входит:
+
+- ingestion работ и метаданных;
+- парсинг документов;
+- Rule Pack;
+- ИИ-оценивание;
+- teacher approval;
+- approved transfer record;
+- student crosswalk;
+- resolution и создание ведомости;
+- запись баллов в БРС;
+- аудит и идемпотентность.
+
+В MVP не входит:
+
+- автономная официальная подпись ИИ без преподавателя;
+- универсальная поддержка всех кафедр и всех дисциплин с первого дня;
+- работа без правил и без аудита;
+- запись в уже подписанную или заблокированную ведомость;
+- “магическая” глобальная формула перевода уровня в балл без Rule Pack.
+
+
+4. СТРАТЕГИЧЕСКОЕ ПОЗИЦИОНИРОВАНИЕ MVP
+
+MVP не должен проектироваться как чат-бот.
+
+MVP должен проектироваться как третий интеграционный контур вокруг двух существующих систем.
+
+Правильная логика:
+
+approved faculty-side academic decision
+-> normalized approved transfer record
+-> rule-based numeric conversion
+-> verified student crosswalk
+-> BRS target resolution
+-> safe batch write
+-> teacher-side BRS signature
+
+То есть ИИ в проекте не является самостоятельным “официальным субъектом”.
+Официальные состояния по-прежнему создаются через преподавателя.
+
+
+5. РОЛИ В СИСТЕМЕ
+
+5.1 Студент
+
+Роль:
+
+- загружает работу в faculty-side систему;
+- выбирает модуль, тип работы, компетенции;
+- не взаимодействует с bridge напрямую.
+
+5.2 Преподаватель
+
+Роль:
+
+- проверяет работу;
+- использует ИИ-draft как вспомогательный материал;
+- утверждает академическое решение;
+- подтверждает либо контролирует перенос в БРС;
+- выполняет официальную подпись ведомости в БРС.
+
+5.3 Администратор проекта / методист
+
+Роль:
+
+- настраивает Rule Pack;
+- подтверждает схемы маппинга;
+- настраивает шаблоны ведомостей;
+- управляет crosswalk;
+- контролирует исключения и логи.
+
+5.4 Системный оператор / ИТ-специалист
+
+Роль:
+
+- сопровождает connectors;
+- следит за работоспособностью сервисов;
+- обслуживает локальный контур и развертывание;
+- контролирует очереди, ошибки и интеграционные обновления.
+
+5.5 ИИ-сервис
+
+Роль:
+
+- анализирует работу в рамках заданных правил;
+- формирует draft;
+- не обладает правом официального утверждения.
+
+
+6. СОСТАВ МОДУЛЕЙ MVP
+
+MVP должен состоять минимум из следующих модулей.
+
+6.1 Faculty Connector
+
+Назначение:
+
+- интеграция с `gtifem.ru`.
+
+Функции:
+
+- получение событий о работах;
+- чтение очереди работ;
+- чтение метаданных работы;
+- чтение faculty-side решения после утверждения;
+- получение файла работы или ссылки на файл.
+
+6.2 Work Registry
+
+Назначение:
+
+- хранение нормализованных записей о работах.
+
+Функции:
+
+- связывание internal id и source id;
+- хранение модуля, группы, типа работы, компетенций, преподавателя;
+- хранение жизненного цикла работы.
+
+6.3 Artifact Storage
+
+Назначение:
+
+- безопасное хранение файлов и промежуточных артефактов.
+
+Функции:
+
+- хранение файла работы;
+- хранение парсингового вывода;
+- хранение нормализованного текста;
+- хранение контрольных хэшей.
+
+6.4 Document Parser
+
+Назначение:
+
+- преобразование работы в структурированный машинно-обрабатываемый вид.
+
+Функции:
+
+- извлечение текста;
+- извлечение структуры документа;
+- выделение таблиц, разделов, формул, списков;
+- подготовка чанков для ИИ-оценивания.
+
+6.5 Rule Pack Service
+
+Назначение:
+
+- хранение и выдача формализованных правил оценивания.
+
+Функции:
+
+- выбор нужного Rule Pack;
+- версия и история правил;
+- маппинг критериев, уровней и числовых баллов;
+- шаблоны рецензий и пояснений.
+
+6.6 AI Evaluation Service
+
+Назначение:
+
+- построение draft-проверки по входной работе и Rule Pack.
+
+Функции:
+
+- анализ содержания;
+- поиск подтверждающих и опровергающих признаков;
+- формирование draft-review;
+- предложение уровня;
+- предложение числового балла;
+- постановка confidence и flags.
+
+6.7 Approval Orchestrator
+
+Назначение:
+
+- перевод draft-результата в teacher-approved результат.
+
+Функции:
+
+- показ draft преподавателю;
+- фиксация правок;
+- фиксация teacher approval;
+- создание approved transfer record.
+
+6.8 Student Crosswalk Service
+
+Назначение:
+
+- сопоставление студента между `gtifem.ru` и `xfem.ru`.
+
+Функции:
+
+- поддержка mapping table;
+- ручная валидация неоднозначных совпадений;
+- хранение статуса надежности сопоставления.
+
+6.9 BRS Connector
+
+Назначение:
+
+- интеграция с `xfem.ru`.
+
+Функции:
+
+- поиск ведомости;
+- создание ведомости;
+- открытие режима редактирования;
+- парсинг batch-form;
+- поиск student_id и column_id;
+- запись числового значения;
+- проверка lock-state;
+- повторная верификация после записи.
+
+6.10 Transfer Ledger
+
+Назначение:
+
+- хранение всех approved transfer record и попыток записи.
+
+Функции:
+
+- состояние transfer;
+- idempotency;
+- retry metadata;
+- before/after values;
+- trace по rule version.
+
+6.11 Audit and Monitoring
+
+Назначение:
+
+- прозрачность и управляемость.
+
+Функции:
+
+- системные логи;
+- бизнес-логи;
+- алерты;
+- отчеты о сбоях;
+- метрики по transfer success/failure.
+
+6.12 Admin UI
+
+Назначение:
+
+- администрирование системы без прямого изменения кода.
+
+Функции:
+
+- управление Rule Pack;
+- управление crosswalk;
+- просмотр transfer ledger;
+- управление шаблонами ведомостей;
+- управление пилотным контуром.
+
+
+7. ОСНОВНЫЕ БИЗНЕС-СЦЕНАРИИ MVP
+
+7.1 Сценарий A. Draft-only
+
+Шаги:
+
+1. Работа появляется в faculty-side контуре.
+2. Файл и метаданные ingested во внутренний контур.
+3. Работа парсится.
+4. Выбирается Rule Pack.
+5. ИИ строит draft-review, proposed_level, proposed_score.
+6. Преподаватель видит draft.
+7. Переноса в БРС не происходит.
+
+Результат:
+
+- преподаватель получает экономию на проверке;
+- проект не затрагивает официальный BRS write path.
+
+7.2 Сценарий B. Assisted transfer
+
+Шаги:
+
+1. Выполняются шаги сценария A.
+2. Преподаватель утверждает академическое решение.
+3. Создается approved transfer record.
+4. Resolve target statement в БРС.
+5. Система показывает transfer preview.
+6. Преподаватель подтверждает перенос.
+7. Bridge пишет балл в БРС.
+8. Преподаватель вручную подписывает ведомость в БРС.
+
+Результат:
+
+- ручной перенос сводится к контролю и подписи;
+- сохраняется безопасный human-in-the-loop.
+
+7.3 Сценарий C. Auto-fill unlocked statement
+
+Шаги:
+
+1. Выполняются шаги сценария B до approved transfer record.
+2. Система автоматически находит или создает target statement.
+3. Система проверяет, что target column unlocked.
+4. Система пишет балл в БРС.
+5. Преподаватель только контролирует и подписывает.
+
+Результат:
+
+- максимальное сокращение рутины в пределах безопасного MVP.
+
+
+8. ЖИЗНЕННЫЙ ЦИКЛ ОБЪЕКТОВ
+
+8.1 Жизненный цикл работы
+
+Состояния:
+
+- discovered
+- ingested
+- parsed
+- drafted
+- teacher_review_pending
+- teacher_approved
+- transfer_prepared
+- brs_written
+- brs_signed
+- exception
+
+8.2 Жизненный цикл transfer
+
+Состояния:
+
+- created
+- waiting_crosswalk
+- waiting_target_resolution
+- ready_to_write
+- write_in_progress
+- write_succeeded
+- write_idempotent
+- blocked_by_lock
+- crosswalk_ambiguous
+- target_not_found
+- target_creation_required
+- target_creation_failed
+- write_failed
+- signed
+
+
+9. СХЕМА ДАННЫХ MVP
+
+Ниже приведены минимально необходимые сущности.
+
+9.1 Entity: work_submission
+
+Назначение:
+
+- нормализованная запись о работе из faculty-side системы.
+
+Поля:
+
+- internal_work_id: string
+- source_system: string
+- source_work_id: string
+- faculty_student_id: string
+- faculty_teacher_id: string
+- faculty_group_code: string
+- module_name: string
+- work_type_name: string
+- competency_codes: array[string]
+- source_status: string
+- source_created_at: datetime
+- source_updated_at: datetime
+- registry_status: string
+
+Комментарий:
+
+- `source_work_id` соответствует faculty-side `data-id`.
+- `faculty_student_id` должен храниться отдельно от BRS-side id.
+
+
+9.2 Entity: work_artifact
+
+Поля:
+
+- artifact_id: string
+- internal_work_id: string
+- source_file_name: string
+- mime_type: string
+- storage_uri: string
+- extracted_text_uri: string
+- parser_version: string
+- artifact_hash: string
+- created_at: datetime
+
+
+9.3 Entity: rule_pack
+
+Назначение:
+
+- формализованные правила конкретного учебного контекста.
+
+Поля:
+
+- rule_pack_id: string
+- version: string
+- active: boolean
+- module_scope: array[string]
+- work_type_scope: array[string]
+- competency_scope: array[string]
+- decision_schema: object
+- scoring_schema: object
+- review_template_schema: object
+- transfer_policy: object
+- created_at: datetime
+- updated_at: datetime
+
+Смысловые разделы rule_pack:
+
+- metadata
+- intake_constraints
+- evidence_requirements
+- level_scale
+- scoring_map
+- review_templates
+- transfer_policy
+- validation_rules
+
+Пример структуры:
+
+{
+  "rule_pack_id": "vit_2025_2026_lab_practice_v1",
+  "version": "1.0.0",
+  "module_scope": ["Введение в информационные технологии"],
+  "work_type_scope": [
+    "Отчет по текущим лабораторным практикумам",
+    "Отчет по текущим практическим занятиям"
+  ],
+  "competency_scope": ["ОПК-6"],
+  "level_scale": {
+    "2": "уровень не сформирован",
+    "3": "пороговый",
+    "4": "базовый",
+    "5": "продвинутый"
+  },
+  "scoring_map": {
+    "target_system": "xfem",
+    "by_statement_type": [
+      {
+        "category_code": "practice",
+        "type_code": "ПЗРЗ",
+        "level_to_score": {
+          "2": 0.00,
+          "3": 0.65,
+          "4": 1.30,
+          "5": 1.95
+        }
+      }
+    ]
+  },
+  "transfer_policy": {
+    "allow_statement_create": true,
+    "forbid_write_after_lock": true,
+    "require_teacher_approval": true
+  }
+}
+
+Комментарий:
+
+- значения score в примере приведены только как схема;
+- реальные mapping values должны утверждаться отдельно.
+
+
+9.4 Entity: evaluation_draft
+
+Поля:
+
+- evaluation_draft_id: string
+- internal_work_id: string
+- rule_pack_id: string
+- ai_model_id: string
+- parser_version: string
+- proposed_level_code: string
+- proposed_level_text: string
+- proposed_score: decimal
+- draft_review_text: text
+- evidence_summary: text
+- uncertainty_flags: array[string]
+- confidence_score: decimal
+- created_at: datetime
+
+
+9.5 Entity: approval_record
+
+Назначение:
+
+- teacher-approved академическое решение.
+
+Поля:
+
+- approval_id: string
+- internal_work_id: string
+- approved_by_teacher_id: string
+- approval_status: string
+- approved_level_code: string
+- approved_level_text: string
+- approved_review_text: text
+- source_approval_event: string
+- approved_at: datetime
+
+Комментарий:
+
+- `approval_status` должен отделять:
+  - accepted;
+  - revision_required;
+  - cancelled.
+
+
+9.6 Entity: student_crosswalk
+
+Назначение:
+
+- связывание student identity между контурами.
+
+Поля:
+
+- crosswalk_id: string
+- faculty_student_id: string
+- faculty_student_fio: string
+- faculty_group_code: string
+- brs_student_id: string
+- brs_student_fio: string
+- brs_courseid: string
+- match_status: string
+- match_confidence: decimal
+- validated_by: string
+- validated_at: datetime
+
+Допустимые match_status:
+
+- exact
+- validated_manual
+- ambiguous
+- unresolved
+
+Жесткое правило:
+
+- `ambiguous` и `unresolved` не допускают auto-write.
+
+
+9.7 Entity: brs_statement_template
+
+Назначение:
+
+- шаблон создания ведомостей в БРС.
+
+Поля:
+
+- template_id: string
+- module_name: string
+- category_code: string
+- category_id: string
+- type_code: string
+- type_id: string
+- naming_pattern: string
+- default_grademax: decimal
+- date_policy: string
+- allow_auto_create: boolean
+- active: boolean
+
+Пример:
+
+{
+  "template_id": "vit_practice_default_v1",
+  "module_name": "Введение в информационные технологии",
+  "category_code": "practice",
+  "category_id": "2",
+  "type_code": "ПЗРЗ",
+  "type_id": "29",
+  "naming_pattern": "ПРКТ {lesson_number}",
+  "default_grademax": 36.00,
+  "date_policy": "lesson_date",
+  "allow_auto_create": true
+}
+
+
+9.8 Entity: approved_transfer_record
+
+Назначение:
+
+- центральный объект bridge-сервиса.
+
+Поля:
+
+- transfer_id: string
+- internal_work_id: string
+- approval_id: string
+- crosswalk_id: string
+- rule_pack_id: string
+- rule_pack_version: string
+- target_system: string
+- target_courseid: string
+- target_category_id: string
+- target_type_id: string
+- target_statement_description: string
+- target_statement_date: date
+- target_column_id: string
+- target_eid: string
+- target_student_id: string
+- desired_numeric_score: decimal
+- existing_numeric_score: decimal
+- transfer_mode: string
+- transfer_status: string
+- lock_state_before_write: string
+- lock_state_after_write: string
+- write_attempted_at: datetime
+- write_confirmed_at: datetime
+
+Ключевой смысл:
+
+- это объект, который связывает faculty-side approval с BRS-side write path.
+
+
+9.9 Entity: brs_write_attempt
+
+Назначение:
+
+- атомарный журнал попыток записи в БРС.
+
+Поля:
+
+- write_attempt_id: string
+- transfer_id: string
+- courseid: string
+- student_id: string
+- column_id: string
+- eid: string
+- old_value: decimal or null
+- new_value: decimal
+- result_status: string
+- result_message: text
+- response_checksum: string
+- attempted_at: datetime
+
+
+10. ПРАВИЛА ДЛЯ RULE PACK
+
+Rule Pack должен быть формализован, а не “зашит в prompt”.
+
+Минимальные обязательные разделы Rule Pack:
+
+10.1 metadata
+
+Содержит:
+
+- идентификатор;
+- версию;
+- владельца;
+- область действия.
+
+10.2 intake_constraints
+
+Содержит:
+
+- какие типы работ поддерживаются;
+- какие форматы файлов допустимы;
+- какие обязательные элементы должен содержать документ.
+
+10.3 evidence_requirements
+
+Содержит:
+
+- список признаков и критериев;
+- что считается достаточным доказательством;
+- какие элементы обязательны для уровня.
+
+10.4 level_scale
+
+Содержит:
+
+- коды уровней;
+- названия уровней;
+- формальные условия уровня;
+- исключающие условия.
+
+10.5 scoring_map
+
+Содержит:
+
+- target BRS category;
+- target BRS type;
+- level to numeric score mapping;
+- restrictions by module or work type.
+
+10.6 review_templates
+
+Содержит:
+
+- шаблоны текста рецензии;
+- блоки для strengths / omissions / final note;
+- language style requirements.
+
+10.7 transfer_policy
+
+Содержит:
+
+- разрешено ли auto-create statement;
+- требуется ли teacher approval;
+- запрещено ли писать после lock;
+- допускается ли only draft mode.
+
+10.8 validation_rules
+
+Содержит:
+
+- what must be checked before approval;
+- what must be checked before transfer;
+- какие ошибки являются блокирующими.
+
+
+11. ВНУТРЕННИЕ API-КОНТРАКТЫ MVP
+
+Ниже приведены draft internal API contracts. Они не обязаны с первого дня быть внешним REST API, но должны использоваться как логические сервисные контракты.
+
+11.1 Register work event
+
+Method:
+
+POST /api/v1/work-events/register
+
+Назначение:
+
+- зарегистрировать новую работу или изменение существующей.
+
+Request:
+
+{
+  "source_system": "gtifem",
+  "source_work_id": "268011",
+  "faculty_student_id": "9343",
+  "faculty_teacher_id": "9636",
+  "group_code": "6412",
+  "module_name": "Введение в информационные технологии",
+  "work_type_name": "Отчет по лабораторному практикуму",
+  "competency_codes": ["ОПК-6"],
+  "file_url": "/ajax.php?file_portfolio=...",
+  "source_created_at": "2026-04-22T23:04:06+03:00"
+}
+
+Response:
+
+{
+  "internal_work_id": "wrk_01JABC...",
+  "status": "registered"
+}
+
+
+11.2 Ingest artifact
+
+Method:
+
+POST /api/v1/artifacts/ingest
+
+Назначение:
+
+- загрузить или зафиксировать файл работы во внутреннем контуре.
+
+Request:
+
+{
+  "internal_work_id": "wrk_01JABC...",
+  "source_system": "gtifem",
+  "source_work_id": "268011"
+}
+
+Response:
+
+{
+  "artifact_id": "art_01JABC...",
+  "status": "ingested"
+}
+
+
+11.3 Create evaluation draft
+
+Method:
+
+POST /api/v1/evaluations/draft
+
+Назначение:
+
+- запустить AI-evaluation по Rule Pack.
+
+Request:
+
+{
+  "internal_work_id": "wrk_01JABC...",
+  "artifact_id": "art_01JABC...",
+  "rule_pack_id": "vit_2025_2026_lab_practice_v1"
+}
+
+Response:
+
+{
+  "evaluation_draft_id": "evd_01JABC...",
+  "proposed_level_code": "4",
+  "proposed_score": 0.65,
+  "status": "draft_ready"
+}
+
+
+11.4 Confirm teacher approval
+
+Method:
+
+POST /api/v1/approvals/confirm
+
+Назначение:
+
+- зафиксировать teacher-approved academic decision.
+
+Request:
+
+{
+  "internal_work_id": "wrk_01JABC...",
+  "evaluation_draft_id": "evd_01JABC...",
+  "approved_by_teacher_id": "9636",
+  "approval_status": "accepted",
+  "approved_level_code": "4",
+  "approved_review_text": "Работа выполнена в полном объеме, есть незначительные погрешности.",
+  "source_approval_event": "gtifem_ACTION_edit"
+}
+
+Response:
+
+{
+  "approval_id": "apr_01JABC...",
+  "status": "approved"
+}
+
+
+11.5 Resolve student crosswalk
+
+Method:
+
+POST /api/v1/crosswalk/resolve
+
+Назначение:
+
+- найти BRS-side identity студента.
+
+Request:
+
+{
+  "faculty_student_id": "9343",
+  "faculty_student_fio": "Сергей Бородинов",
+  "group_code": "6412",
+  "module_name": "Введение в информационные технологии"
+}
+
+Response exact:
+
+{
+  "crosswalk_id": "crw_01JABC...",
+  "match_status": "exact",
+  "brs_student_id": "7529",
+  "brs_courseid": "12636"
+}
+
+Response ambiguous:
+
+{
+  "crosswalk_id": "crw_01JABC...",
+  "match_status": "ambiguous",
+  "candidates": [
+    {"brs_student_id": "7529", "fio": "Сергей Бородинов"},
+    {"brs_student_id": "7610", "fio": "Сергей Бородинов"}
+  ]
+}
+
+
+11.6 Prepare transfer
+
+Method:
+
+POST /api/v1/transfers/prepare
+
+Назначение:
+
+- создать approved transfer record.
+
+Request:
+
+{
+  "internal_work_id": "wrk_01JABC...",
+  "approval_id": "apr_01JABC...",
+  "crosswalk_id": "crw_01JABC..."
+}
+
+Response:
+
+{
+  "transfer_id": "trf_01JABC...",
+  "desired_numeric_score": 0.65,
+  "status": "waiting_target_resolution"
+}
+
+
+11.7 Resolve BRS target
+
+Method:
+
+POST /api/v1/brs/targets/resolve
+
+Назначение:
+
+- найти или создать target statement / column в БРС.
+
+Request:
+
+{
+  "transfer_id": "trf_01JABC...",
+  "courseid": "12636",
+  "template_id": "vit_practice_default_v1",
+  "statement_description": "ПРКТ 24",
+  "statement_date": "2026-04-26",
+  "allow_create": true
+}
+
+Response:
+
+{
+  "transfer_id": "trf_01JABC...",
+  "target_courseid": "12636",
+  "target_category_id": "2",
+  "target_type_id": "29",
+  "target_column_id": "493222",
+  "target_eid": "i493222",
+  "created": false,
+  "status": "target_resolved"
+}
+
+
+11.8 Write transfer to BRS
+
+Method:
+
+POST /api/v1/transfers/{transfer_id}/write
+
+Назначение:
+
+- выполнить controlled batch write в БРС.
+
+Request:
+
+{
+  "mode": "assisted_transfer",
+  "requested_by": "9636"
+}
+
+Response success:
+
+{
+  "transfer_id": "trf_01JABC...",
+  "result_status": "write_succeeded",
+  "old_value": "",
+  "new_value": "0,65",
+  "verified": true
+}
+
+Response blocked:
+
+{
+  "transfer_id": "trf_01JABC...",
+  "result_status": "blocked_by_lock",
+  "message": "target statement is already signed/locked"
+}
+
+
+11.9 Get transfer state
+
+Method:
+
+GET /api/v1/transfers/{transfer_id}
+
+Назначение:
+
+- получить полное текущее состояние transfer.
+
+Response:
+
+{
+  "transfer_id": "trf_01JABC...",
+  "status": "write_succeeded",
+  "target_column_id": "493222",
+  "target_student_id": "7529",
+  "desired_numeric_score": 0.65,
+  "existing_numeric_score": 0.65,
+  "lock_state_after_write": "unlocked"
+}
+
+
+12. СОБЫТИЙНАЯ МОДЕЛЬ
+
+Даже если система реализуется как один сервис, логически она должна мыслить событиями.
+
+Рекомендуемые внутренние события:
+
+12.1 work_discovered
+
+Когда генерируется:
+
+- работа замечена во faculty-side контуре.
+
+12.2 artifact_ingested
+
+Когда генерируется:
+
+- файл получен и сохранен.
+
+12.3 artifact_parsed
+
+Когда генерируется:
+
+- parser завершил работу.
+
+12.4 evaluation_draft_ready
+
+Когда генерируется:
+
+- ИИ и Rule Pack выдали draft.
+
+12.5 academic_approval_confirmed
+
+Когда генерируется:
+
+- teacher-approved решение зафиксировано.
+
+12.6 crosswalk_resolved
+
+Когда генерируется:
+
+- BRS-side identity студента найдена.
+
+12.7 brs_target_resolved
+
+Когда генерируется:
+
+- target statement/column найден или создан.
+
+12.8 brs_write_succeeded
+
+Когда генерируется:
+
+- значение записано и проверено.
+
+12.9 brs_lock_detected
+
+Когда генерируется:
+
+- система увидела, что target locked.
+
+12.10 transfer_exception
+
+Когда генерируется:
+
+- любой блокирующий сценарий.
+
+
+13. ЛОГИКА TEACHER APPROVAL
+
+Teacher approval — обязательный слой системы.
+
+На MVP преподаватель должен подтверждать как минимум:
+
+- final approved level;
+- final review text;
+- допустимость переноса в БРС.
+
+Разделение статусов:
+
+- draft_ready
+- waiting_teacher_review
+- teacher_approved
+- teacher_revision_required
+- transfer_allowed
+- transfer_blocked
+
+Важно:
+
+Система должна различать:
+
+- AI proposal;
+- teacher edited proposal;
+- teacher approved result.
+
+Это критично для методики, аудита и доверия к системе.
+
+
+14. ЛОГИКА BRS BRIDGE-СЕРВИСА
+
+Bridge-сервис является самым чувствительным инженерным модулем.
+
+Он должен работать по строгому алгоритму.
+
+14.1 Resolve flow
+
+1. Получить approved transfer record.
+2. Проверить crosswalk.
+3. Проверить target course.
+4. Найти statement по tuple:
+   - courseid
+   - category
+   - type
+   - date
+   - description
+5. Если statement not found и allow_create=true:
+   - создать statement;
+   - перечитать score table;
+   - определить column_id и eid.
+6. Проверить доступность edit mode.
+
+14.2 Write flow
+
+1. Открыть BRS edit mode.
+2. Спарсить batch form.
+3. Найти field:
+   - grade_<student_id>_<column_id>
+4. Найти old field:
+   - oldgrade_<student_id>_<column_id>
+5. Определить existing value.
+6. Проверить lock-state.
+7. Если locked:
+   - abort;
+   - write blocked_by_lock.
+8. Если existing value == desired value:
+   - write idempotent success;
+   - do not rewrite.
+9. Иначе:
+   - мутировать только target field;
+   - сохранить batch form;
+   - перечитать HTML;
+   - проверить новое значение.
+
+14.3 Lock handling
+
+Bridge не должен:
+
+- вызывать lock автоматически в MVP;
+- снимать lock автоматически;
+- писать после обнаружения lock.
+
+
+15. ПРАВИЛА ИДЕМПОТЕНТНОСТИ
+
+Идемпотентность обязательна.
+
+Минимальные правила:
+
+15.1 Rule: no duplicate write by same transfer_id
+
+Один и тот же transfer_id не должен приводить к повторной записи нового значения, если успешная запись уже подтверждена.
+
+15.2 Rule: compare desired vs existing
+
+Если `desired_numeric_score == existing_numeric_score`, операция считается `write_idempotent`.
+
+15.3 Rule: lock is terminal for current write path
+
+Если statement locked, состояние становится `blocked_by_lock`.
+
+15.4 Rule: statement recreation must produce new target resolution
+
+Если statement был пересоздан, удален или поменял id, старый transfer не должен слепо дописывать в неизвестную колонку.
+
+
+16. ЛОГИКА БЕЗОПАСНОСТИ И АВТОРИЗАЦИИ
+
+16.1 Общие правила
+
+- `sesskey` нельзя хардкодить;
+- cookies нельзя считать постоянным API-ключом;
+- bridge должен использовать живую авторизованную сессию в контролируемом контуре;
+- все чувствительные данные должны храниться в защищенном секрет-хранилище или в контролируемом runtime.
+
+16.2 Faculty-side
+
+Минимум нужно:
+
+- иметь контролируемый способ чтения очереди работ;
+- иметь контролируемый способ получения файла;
+- иметь контролируемый способ чтения approved faculty-side state.
+
+16.3 BRS-side
+
+Минимум нужно:
+
+- иметь авторизованный доступ к `xfem.ru`;
+- иметь `sesskey`, актуальный для текущей сессии;
+- иметь возможность открыть edit mode и read form state;
+- иметь возможность submit batch form.
+
+16.4 Журнал безопасности
+
+Нужно логировать:
+
+- кто инициировал transfer;
+- какой аккаунт использовался для write;
+- какие statement/column были затронуты;
+- были ли ошибки авторизации или устаревшей сессии.
+
+
+17. НЕФУНКЦИОНАЛЬНЫЕ ТРЕБОВАНИЯ
+
+17.1 Надежность
+
+- система не должна “тихо ошибаться”;
+- любая ошибка должна иметь статус и trace;
+- write path должен быть проверяемым после операции.
+
+17.2 Идемпотентность
+
+- повторный запуск одного и того же transfer не должен дублировать результат.
+
+17.3 Наблюдаемость
+
+- нужны метрики, логи, исключения, retry states.
+
+17.4 Расширяемость
+
+- новая дисциплина должна добавляться через Rule Pack и template layer, а не через переписывание ядра.
+
+17.5 Локализация
+
+- система должна быть пригодна для локального faculty deployment.
+
+17.6 Контролируемость
+
+- bridge должен иметь admin-level disable switch;
+- нужен режим dry-run;
+- нужен режим assisted mode;
+- нужен режим restricted pilot scope.
+
+
+18. ОБРАБОТКА ИСКЛЮЧЕНИЙ
+
+Ниже минимальный набор exception states, которые должны быть формализованы.
+
+18.1 faculty_work_not_accessible
+
+Причина:
+
+- не удалось получить файл или метаданные работы.
+
+18.2 parser_failed
+
+Причина:
+
+- не удалось распарсить документ.
+
+18.3 rule_pack_not_found
+
+Причина:
+
+- нет Rule Pack для данного модуля/типа работы.
+
+18.4 crosswalk_ambiguous
+
+Причина:
+
+- студент не сопоставлен однозначно.
+
+18.5 brs_target_not_found
+
+Причина:
+
+- не найдена ведомость и нельзя создать автоматически.
+
+18.6 brs_target_create_failed
+
+Причина:
+
+- попытка создать ведомость завершилась ошибкой.
+
+18.7 brs_locked
+
+Причина:
+
+- target statement или column уже подписана/заблокирована.
+
+18.8 brs_write_verification_failed
+
+Причина:
+
+- после submit batch form target value не подтвержден.
+
+18.9 stale_session
+
+Причина:
+
+- `sesskey` или сессия недействительны.
+
+
+19. ТЕСТОВЫЕ И ПРИЕМОЧНЫЕ СЦЕНАРИИ MVP
+
+Система считается годной к пилоту, если выполняются следующие сценарии.
+
+19.1 Scenario: draft generation
+
+Условие:
+
+- система получает реальную работу.
+
+Ожидание:
+
+- создается evaluation_draft с review, level, score.
+
+19.2 Scenario: teacher approval
+
+Условие:
+
+- преподаватель редактирует draft и подтверждает.
+
+Ожидание:
+
+- создается approval_record и approved_transfer_record.
+
+19.3 Scenario: exact crosswalk
+
+Условие:
+
+- существует заранее верифицированное сопоставление студента.
+
+Ожидание:
+
+- система корректно получает brs_student_id.
+
+19.4 Scenario: statement found
+
+Условие:
+
+- нужная колонка уже существует и unlocked.
+
+Ожидание:
+
+- система пишет значение и подтверждает его.
+
+19.5 Scenario: statement create
+
+Условие:
+
+- нужной колонки нет, allow_auto_create=true.
+
+Ожидание:
+
+- система создает ведомость, получает target column id, затем пишет значение.
+
+19.6 Scenario: locked statement
+
+Условие:
+
+- целевая колонка signed/locked.
+
+Ожидание:
+
+- запись не выполняется;
+- система возвращает `blocked_by_lock`.
+
+19.7 Scenario: rerun same transfer
+
+Условие:
+
+- transfer уже успешно выполнен.
+
+Ожидание:
+
+- система выдает idempotent success, без повторного искажения данных.
+
+
+20. КРИТЕРИИ ПРИЕМКИ ПЕРВОГО ПИЛОТА
+
+Пилотный MVP может считаться успешным, если:
+
+- хотя бы по одной дисциплине и ограниченному числу типов работ система стабильно строит draft;
+- преподаватель может одобрять результат без ручного переписывания рецензии с нуля;
+- approved result корректно конвертируется в числовой балл по утвержденному Rule Pack;
+- bridge находит или создает нужную ведомость;
+- bridge корректно пишет балл в незаблокированную колонку;
+- ни одна запись не производится после lock;
+- все операции журналируются;
+- повторный запуск не искажает результат;
+- преподаватель сохраняет контроль над final signature.
+
+
+21. МИНИМАЛЬНЫЙ ПЛАН РЕАЛИЗАЦИИ
+
+Этап 1. Internal data foundation
+
+- work registry
+- artifact storage
+- rule pack storage
+- transfer ledger
+
+Этап 2. Faculty-side draft contour
+
+- faculty connector
+- parser
+- AI draft generation
+- approval UI or approval capture layer
+
+Этап 3. BRS bridge
+
+- crosswalk service
+- statement resolution
+- statement creation
+- batch-form write
+- verification
+
+Этап 4. Pilot hardening
+
+- logging
+- retries
+- dry-run
+- exception handling
+- metrics
+
+
+22. ЧТО НУЖНО СЛЕДУЮЩИМ ДОКУМЕНТОМ
+
+После настоящего инженерного ТЗ логически должны появиться:
+
+1. Формальная JSON-schema версия `rule_pack`.
+2. Формальная JSON-schema версия `approved_transfer_record`.
+3. BRS connector protocol spec.
+4. Student crosswalk protocol spec.
+5. Teacher approval UX spec.
+6. Pilot rollout checklist.
+
+
+23. ФИНАЛЬНАЯ ИНЖЕНЕРНАЯ ПОЗИЦИЯ
+
+Правильный инженерный путь для факультета заключается не в создании “всемогущего ИИ”, а в создании управляемого интеграционного контура, внутри которого ИИ решает свою часть работы.
+
+Правильная MVP-конструкция:
+
+- ИИ анализирует и предлагает;
+- Rule Pack формализует;
+- преподаватель утверждает;
+- bridge безопасно переносит;
+- преподаватель подписывает официальный результат.
+
+Именно такая конструкция:
+
+- реализуема в ближайшем будущем;
+- институционально защищаема;
+- масштабируема;
+- совместима с будущим переходом к локальному faculty AI контуру.

@@ -1,0 +1,1035 @@
+TO-BE INTEGRATION SPECIFICATION FOR MVP
+Faculty AI Assessment and BRS Transfer System
+
+Date: 26.04.2026
+
+1. PURPOSE OF THE DOCUMENT
+
+This document fixes the target direction of the project after the As-Is analysis of the current faculty ecosystem.
+
+The purpose of the MVP is not to create a chat bot around assessment and not to automate browser clicks for their own sake.
+
+The purpose of the MVP is to create a controlled faculty-side integration layer that can:
+
+- receive a student work context from the faculty site;
+- run AI-supported and rule-based assessment of that work;
+- prepare a level-based and numeric evaluation draft;
+- keep teacher approval at the right control points;
+- transfer the approved result into BRS safely and reproducibly;
+- preserve auditability, idempotency, and scalability.
+
+This document describes the To-Be state for the first real implementation wave.
+
+
+2. STRATEGIC DIRECTION
+
+We are moving toward a faculty platform of managed AI assessment.
+
+This direction means that the future system is not a single model and not a single script. It is a controlled operating contour in which AI is only one component.
+
+The target contour is:
+
+student work upload
+-> structured extraction of work context
+-> Rule Pack and competency logic
+-> AI-assisted evaluation
+-> teacher approval
+-> approved transfer record
+-> safe BRS write
+-> teacher-side official signature
+-> audit log and analytics
+
+The key idea is this:
+
+The academic decision and the official numeric fixation are two different stages and must be treated separately.
+
+
+3. WHY ALL CURRENT ACTIONS ARE NECESSARY
+
+The work with screenshots, HAR files, page mechanics, statement structure, ids, and locking logic is necessary because the faculty wants not just "an AI that can say something about a paper", but a real production system.
+
+Without this analysis the project would fail in one of four ways:
+
+- the AI would produce text but not integrate into the actual educational process;
+- the automation would be technically fragile and break on real forms and locks;
+- the system would not know where teacher responsibility begins and ends;
+- the project would not scale beyond one course, one teacher, or one temporary script.
+
+The current analytical actions therefore serve five concrete goals:
+
+- identify the real systems of record;
+- identify the real persistence boundaries;
+- locate the safe integration window;
+- design a reusable bridge instead of a one-off hack;
+- prepare the project for institutional rollout.
+
+
+4. TARGET INTERPRETATION OF "AUTOMATIC CHECKING, SCORING, AND SIGNING"
+
+This phrase must be interpreted carefully.
+
+In practice it contains three different automation layers.
+
+Layer 1. Automatic checking.
+
+This means:
+
+- extracting the content of the work;
+- checking the work against competency criteria and templates;
+- finding evidence, omissions, structural defects, and quality indicators;
+- forming a draft review and a proposed level.
+
+Layer 2. Automatic scoring.
+
+This means:
+
+- mapping the approved level and work context into a numeric value;
+- resolving the target BRS statement;
+- preparing or writing the value into the correct BRS cell.
+
+Layer 3. Automatic signing.
+
+This means:
+
+- moving the result into official institutional status without further teacher action.
+
+Strict expert position:
+
+For the MVP and for the first implementation waves, the project should automate Layer 1 and Layer 2 under teacher control, but should not automate Layer 3 in a fully autonomous mode.
+
+The first correct target is not "AI signs instead of teacher", but:
+
+- AI checks;
+- AI proposes;
+- the bridge writes or prepares transfer safely;
+- the teacher confirms and signs.
+
+If later the faculty wants to discuss a more automatic signing mode, it must be treated as a separate governance and responsibility decision, not as a purely technical feature.
+
+
+5. SYSTEMS OF RECORD IN THE TARGET MODEL
+
+The architecture must respect the existing division of roles between systems.
+
+System of record 1: gtifem.ru
+
+This remains the place where the work lives in educational context:
+
+- student upload;
+- module;
+- type of work;
+- competencies;
+- teacher-side review;
+- level-based decision;
+- faculty-side approval event.
+
+System of record 2: xfem.ru
+
+This remains the place where the official numeric educational fixation lives:
+
+- statements;
+- columns;
+- statement structure;
+- numeric values;
+- category aggregates;
+- course aggregates;
+- signed and locked state.
+
+System of record 3: new integration layer
+
+This must be introduced by the project and should store:
+
+- normalized work events;
+- AI assessment drafts;
+- approved transfer records;
+- rule pack versions;
+- identity crosswalks;
+- BRS write attempts;
+- audit logs;
+- exception states.
+
+This third layer is the real MVP bridge.
+
+
+6. PRINCIPLES OF THE MVP ARCHITECTURE
+
+The MVP must be built on the following principles.
+
+Principle 1. Human in the loop at official boundaries.
+
+The teacher remains the owner of the academic decision and of the final official BRS signature in the first rollout.
+
+Principle 2. Rule Pack before model improvisation.
+
+The center of the solution is not an unconstrained generative model, but:
+
+- competency templates;
+- grading logic;
+- mapping rules;
+- auditability.
+
+Principle 3. Local and replaceable connectors.
+
+The connectors to gtifem.ru and xfem.ru must be isolated modules. The rest of the system must not depend on page-specific details directly.
+
+Principle 4. Idempotent writes.
+
+Repeated processing of the same approved result must not cause repeated score inflation or duplicate transfers.
+
+Principle 5. Explicit lock respect.
+
+No automatic writing is allowed into a signed or locked BRS statement.
+
+Principle 6. Scalable discipline configuration.
+
+The system must be configurable by:
+
+- module;
+- type of work;
+- competency set;
+- evaluation template;
+- BRS category and statement type.
+
+Principle 7. Audit by default.
+
+Every important action must be reconstructable later.
+
+
+7. TARGET BUSINESS FLOW OF THE MVP
+
+Stage 1. Work appears on the faculty site.
+
+- the student uploads the work to gtifem.ru;
+- the work is linked to module, work type, competencies, and teacher;
+- the work becomes visible in the teacher portfolio queue.
+
+Stage 2. The AI assessment layer prepares a draft.
+
+- the system identifies the work event;
+- the file is downloaded or ingested into the controlled assessment layer;
+- the work is parsed into structured content;
+- the relevant Rule Pack is selected;
+- the AI and rule engine build:
+  - draft review;
+  - proposed level;
+  - evidence notes;
+  - quality flags;
+  - proposed numeric transfer value.
+
+Stage 3. Teacher approval.
+
+- the teacher sees the draft result;
+- the teacher edits if needed;
+- the teacher confirms the academic decision;
+- the system records the approval event.
+
+Stage 4. Approved transfer record creation.
+
+- the system creates a formal approved transfer record;
+- the approved transfer record becomes the source object for BRS transfer;
+- the system resolves the target student in BRS;
+- the system resolves or creates the target statement column.
+
+Stage 5. Safe BRS write.
+
+- the bridge verifies that the statement is unlocked;
+- the bridge compares existing and desired values;
+- the bridge performs a controlled batch write into the BRS score form;
+- the result is verified;
+- the attempt is logged.
+
+Stage 6. Official fixation.
+
+- the teacher reviews the BRS result;
+- the teacher signs the statement column in BRS;
+- the statement becomes locked;
+- the bridge records the final lock state.
+
+
+8. MVP BOUNDARY: WHAT IS INCLUDED AND WHAT IS NOT
+
+Included in MVP:
+
+- work event normalization;
+- controlled file ingestion;
+- AI-assisted draft checking;
+- rule-based level and score preparation;
+- teacher approval support;
+- approved transfer record;
+- BRS statement resolution;
+- automatic or semi-automatic writing into unlocked statement;
+- audit log;
+- exception handling.
+
+Not included in MVP:
+
+- fully autonomous official signature without teacher participation;
+- universal support for every faculty course from day one;
+- unrestricted automation against any legacy page without safeguards;
+- hardcoded one-size-fits-all score mapping.
+
+
+9. TARGET MVP MODES OF OPERATION
+
+Mode A. Draft-only mode.
+
+What the system does:
+
+- parses the work;
+- prepares draft review and level;
+- computes proposed numeric score;
+- does not write into BRS.
+
+When to use:
+
+- early pilot;
+- methodology tuning;
+- trust building with teachers.
+
+Mode B. Assisted transfer mode.
+
+What the system does:
+
+- prepares approved transfer record;
+- resolves BRS target;
+- shows the teacher the exact transfer set;
+- performs BRS write only after explicit teacher trigger;
+- does not sign the statement automatically.
+
+When to use:
+
+- first production pilot;
+- medium organizational risk;
+- practical rollout on one discipline.
+
+Mode C. Automatic fill of unlocked statement.
+
+What the system does:
+
+- after teacher approval on the academic side, writes scores automatically into the matching unlocked BRS statement;
+- stops before signing;
+- logs everything.
+
+When to use:
+
+- only after stable crosswalks and mappings are proven.
+
+Hard prohibition for all early modes:
+
+- no automatic write into locked statement;
+- no automatic unlock;
+- no autonomous final signature.
+
+
+10. RECOMMENDED HIGH-LEVEL ARCHITECTURE
+
+The MVP should be implemented as a third integration contour around the two legacy systems.
+
+Recommended architecture:
+
+1. Faculty Site Connector
+2. Work Registry
+3. Artifact Storage
+4. Document Parser
+5. Rule Pack Service
+6. AI Evaluation Service
+7. Approval Orchestrator
+8. Student Identity Crosswalk Service
+9. BRS Connector
+10. Transfer Ledger
+11. Audit and Monitoring Service
+12. Admin and Configuration UI
+
+The system should be modular from day one even if the first rollout is small.
+
+
+11. MODULE DEFINITIONS
+
+11.1 Faculty Site Connector
+
+Purpose:
+
+- interacts with gtifem.ru;
+- captures or reads work events;
+- resolves faculty-side identifiers;
+- reads approved faculty-side decisions.
+
+Responsibilities:
+
+- work queue discovery;
+- work metadata extraction;
+- work file acquisition;
+- faculty-side decision capture.
+
+Non-goals:
+
+- does not hold institutional scoring logic;
+- does not convert level to score.
+
+
+11.2 Work Registry
+
+Purpose:
+
+- keeps normalized internal records for uploaded and assessed works.
+
+Responsibilities:
+
+- assign internal work id;
+- link faculty-side work id to internal record;
+- persist module, group, competencies, teacher, work type, timestamps.
+
+
+11.3 Artifact Storage
+
+Purpose:
+
+- securely stores files or extracted representations needed for AI evaluation and later audit.
+
+Responsibilities:
+
+- raw file storage;
+- extracted text storage;
+- parser outputs;
+- optional redacted versions.
+
+
+11.4 Document Parser
+
+Purpose:
+
+- transforms uploaded works into structured machine-usable content.
+
+Responsibilities:
+
+- text extraction;
+- page structure;
+- headings;
+- tables;
+- images and diagrams if relevant;
+- document type markers.
+
+Parser output should be normalized and versioned.
+
+
+11.5 Rule Pack Service
+
+Purpose:
+
+- provides the formal faculty logic used by the evaluation layer.
+
+A Rule Pack should contain:
+
+- course or module identifier;
+- supported work types;
+- competency mapping;
+- assessment criteria;
+- evidence rules;
+- level decision logic;
+- level to score mapping;
+- explanation templates.
+
+This service must be versioned.
+
+
+11.6 AI Evaluation Service
+
+Purpose:
+
+- generates draft analytical judgement under Rule Pack constraints.
+
+Responsibilities:
+
+- compare work content against criteria;
+- extract evidence;
+- identify missing components;
+- propose level;
+- propose review text;
+- flag uncertainty.
+
+Important design rule:
+
+The AI service must not be a free agent. It must operate under structured prompt logic, evaluation schema, and Rule Pack constraints.
+
+
+11.7 Approval Orchestrator
+
+Purpose:
+
+- turns draft AI outputs into teacher-controlled academic decisions.
+
+Responsibilities:
+
+- present draft result;
+- capture teacher edits;
+- capture final academic approval;
+- create approved transfer record.
+
+This module is the formal boundary between:
+
+- draft assessment;
+- approved institutional result.
+
+
+11.8 Student Identity Crosswalk Service
+
+Purpose:
+
+- resolves the same student between gtifem.ru and xfem.ru.
+
+This is mandatory because the current systems use different identity namespaces.
+
+Recommended matching hierarchy:
+
+- primary institutional id if available;
+- secondary stable internal mapping table;
+- fallback matching by FIO plus group only with explicit validation;
+- no unsafe silent match by text alone.
+
+
+11.9 BRS Connector
+
+Purpose:
+
+- interacts with xfem.ru safely.
+
+Responsibilities:
+
+- open statement creation form;
+- create statement if missing;
+- open edit mode;
+- parse batch form structure;
+- resolve student row id and statement column id;
+- write numeric values into form;
+- verify unlocked state;
+- never write after lock.
+
+The connector must be session-aware and browser-aware, not built on the false assumption of a stable public JSON API.
+
+
+11.10 Transfer Ledger
+
+Purpose:
+
+- stores all approved and attempted transfers.
+
+Responsibilities:
+
+- approved transfer record;
+- target resolution metadata;
+- desired value;
+- previous value;
+- write result;
+- lock status;
+- retry status;
+- rule version.
+
+
+11.11 Audit and Monitoring Service
+
+Purpose:
+
+- provides operational transparency and accountability.
+
+Responsibilities:
+
+- structured event logs;
+- transfer success and failure stats;
+- unresolved identity cases;
+- locked-statement exceptions;
+- rule drift alerts;
+- suspicious mismatch alerts.
+
+
+11.12 Admin and Configuration UI
+
+Purpose:
+
+- gives faculty admins and project operators a place to manage the system without code edits.
+
+Responsibilities:
+
+- Rule Pack versions;
+- module configuration;
+- BRS category and type templates;
+- student crosswalk corrections;
+- pilot scope control;
+- logs and reruns.
+
+
+12. DATA MODEL OF THE MVP
+
+The following entities should exist in the MVP data model.
+
+12.1 WorkSubmission
+
+Fields:
+
+- internal_work_id
+- source_system
+- source_work_id
+- faculty_student_id
+- teacher_id
+- group_code
+- module_code or module_name
+- work_type_name
+- competencies
+- source_created_at
+- current_status
+
+
+12.2 WorkArtifact
+
+Fields:
+
+- artifact_id
+- internal_work_id
+- file_name
+- file_type
+- storage_uri
+- parser_version
+- extracted_text_uri
+- artifact_hash
+
+
+12.3 RulePack
+
+Fields:
+
+- rule_pack_id
+- module_scope
+- work_type_scope
+- competency_scope
+- version
+- level_schema
+- scoring_schema
+- explanation_templates
+- active_from
+- active_to
+
+
+12.4 EvaluationDraft
+
+Fields:
+
+- evaluation_draft_id
+- internal_work_id
+- rule_pack_id
+- ai_model_id
+- parser_version
+- proposed_level
+- proposed_score
+- draft_review_text
+- evidence_summary
+- confidence
+- draft_created_at
+
+
+12.5 ApprovalRecord
+
+Fields:
+
+- approval_id
+- internal_work_id
+- approved_by
+- approved_level
+- approved_review_text
+- approval_status
+- approval_timestamp
+- source_confirmation_method
+
+
+12.6 ApprovedTransferRecord
+
+Fields:
+
+- transfer_id
+- internal_work_id
+- approval_id
+- student_crosswalk_id
+- target_courseid
+- target_categid
+- target_typeid
+- target_statement_description
+- target_statement_date
+- target_column_id
+- target_eid
+- desired_numeric_score
+- existing_numeric_score
+- transfer_mode
+- transfer_status
+- lock_state_before_write
+- lock_state_after_write
+- write_attempted_at
+- write_confirmed_at
+
+
+12.7 StudentCrosswalk
+
+Fields:
+
+- crosswalk_id
+- faculty_student_id
+- faculty_student_fio
+- faculty_group_code
+- brs_student_id
+- brs_student_fio
+- brs_courseid
+- match_status
+- validated_by
+- validated_at
+
+
+12.8 BRSStatementTemplate
+
+Fields:
+
+- template_id
+- module_scope
+- category_code
+- typeid
+- default_max_score
+- naming_pattern
+- date_rule
+- active_flag
+
+
+13. TARGET INTERNAL API AND EVENT CONTRACTS
+
+The MVP should use internal APIs and events even if the first version is deployed as one service.
+
+Recommended internal contracts:
+
+Contract 1. Faculty work event intake
+
+Purpose:
+
+- register that a work exists or changed on gtifem.ru.
+
+Contract 2. Parsed artifact ready
+
+Purpose:
+
+- signal that the file has been ingested and parsed.
+
+Contract 3. Evaluation draft ready
+
+Purpose:
+
+- signal that AI and Rule Pack assessment draft is ready for teacher review.
+
+Contract 4. Academic approval received
+
+Purpose:
+
+- signal that the teacher-approved decision exists and can be transferred.
+
+Contract 5. Student crosswalk resolved
+
+Purpose:
+
+- signal that the work has a verified BRS-side student identity.
+
+Contract 6. Statement resolved or created
+
+Purpose:
+
+- signal that the target BRS statement column is known and writable.
+
+Contract 7. Transfer write attempted
+
+Purpose:
+
+- record the outcome of the BRS batch write.
+
+Contract 8. Lock state changed
+
+Purpose:
+
+- record that the target statement became signed or locked.
+
+
+14. TARGET LOGIC OF TEACHER APPROVAL
+
+Teacher approval must remain explicit.
+
+Recommended approval statuses in the integration layer:
+
+- Draft
+- Needs teacher review
+- Teacher approved
+- Teacher returned for revision
+- Ready for BRS transfer
+- Written to BRS
+- BRS signed
+- Exception
+
+Teacher approval must capture:
+
+- final approved level;
+- final review text;
+- approval timestamp;
+- approving teacher identity;
+- rule pack version used.
+
+The system should preserve the difference between:
+
+- AI suggestion;
+- teacher-edited decision;
+- teacher-approved decision.
+
+
+15. TARGET NUMERIC CONVERSION DESIGN
+
+The conversion from faculty-side level to BRS-side score must not be universal and global.
+
+It must be configurable by educational context.
+
+Recommended conversion key:
+
+- module
+- work type
+- competency or competency group
+- assessment period
+- BRS category
+- BRS statement type
+
+Recommended conversion result:
+
+- exact numeric value;
+- allowed range;
+- max value;
+- explanation text;
+- rule version.
+
+This design protects the system from false simplification and makes later scaling possible.
+
+
+16. TARGET BRS RESOLUTION LOGIC
+
+The BRS connector must resolve the target statement in a disciplined way.
+
+Resolution order:
+
+1. Find existing statement by:
+   - courseid
+   - category
+   - statement type
+   - date
+   - description pattern
+
+2. If not found and policy allows creation:
+   - create statement using template
+   - reopen score table
+   - resolve new column id
+
+3. Resolve statement technical ids:
+   - column_id
+   - eid
+   - editable form field names
+
+4. Resolve target student row in that course.
+
+5. Verify unlocked state before write.
+
+The connector must never assume that a human-readable title alone is enough.
+
+
+17. TARGET WRITE SAFETY RULES
+
+The BRS write path must obey the following rules.
+
+Rule 1. No write after lock.
+
+If the target statement is signed or locked, the connector stops and logs a controlled exception.
+
+Rule 2. No blind write.
+
+The connector must read the current batch form first, then mutate only intended grade fields.
+
+Rule 3. Idempotent behavior.
+
+If the current value already equals the desired value, the system records success without resubmitting the same transfer unnecessarily.
+
+Rule 4. Minimum write scope.
+
+The connector must modify only the intended student and intended statement fields.
+
+Rule 5. Verification after write.
+
+The connector must re-read the returned page and confirm the target value.
+
+Rule 6. Audit by attempt.
+
+Every write attempt must be logged with before and after values.
+
+
+18. TARGET SIGNATURE POLICY
+
+The first implementation should support one of two institutional policies.
+
+Policy A. Teacher signs in BRS manually after transfer.
+
+This is the recommended MVP policy.
+
+Policy B. Teacher performs one-click finalization inside the new integration layer, but the real signature action is still traceable and intentionally triggered by the teacher.
+
+This can be considered in a later wave.
+
+Policy that should not be used in MVP:
+
+- autonomous AI signature without teacher confirmation.
+
+This is too risky from methodological, organizational, and accountability perspectives.
+
+
+19. DEPLOYMENT STRATEGY
+
+The technical architecture should support two phases from day one.
+
+Phase 1. Transitional AI deployment.
+
+- external or hosted model acceptable if organizationally approved;
+- local integration layer at faculty side;
+- connectors and logs stay under faculty control.
+
+Phase 2. Local faculty AI contour.
+
+- local model hosting;
+- local document processing;
+- local storage and audit;
+- optional GPU-based inference in faculty server room.
+
+The architecture must keep the AI engine replaceable so the system can move from temporary provider to local faculty model without redesigning the business logic.
+
+
+20. SCALABILITY REQUIREMENTS
+
+The project must be scalable in six dimensions.
+
+1. Across disciplines
+
+The system must support different Rule Packs per module and not embed one discipline into the core.
+
+2. Across work types
+
+The system must support reports, practical tasks, lab tasks, control works, course works, and future types without core refactoring.
+
+3. Across teachers
+
+Teacher-specific preferences should be configurable, not hardcoded.
+
+4. Across BRS categories and statement types
+
+The system must support different BRS statement categories through templates and mapping rules.
+
+5. Across deployment models
+
+The system must support transitional provider-backed AI and later local AI hosting.
+
+6. Across governance maturity
+
+The system must start in safe semi-automatic mode and later move toward stronger automation without breaking auditability.
+
+
+21. RISKS AND MITIGATIONS
+
+Risk 1. Legacy HTML changes.
+
+Mitigation:
+
+- isolate connectors;
+- keep page parsers versioned;
+- add smoke tests for critical selectors and form fields.
+
+Risk 2. Student mismatch between systems.
+
+Mitigation:
+
+- create explicit crosswalk service;
+- require validation for ambiguous matches.
+
+Risk 3. Wrong level to score mapping.
+
+Mitigation:
+
+- use versioned Rule Packs;
+- pilot on one discipline first;
+- keep review and override flow.
+
+Risk 4. Writes into wrong statement column.
+
+Mitigation:
+
+- resolve by structured tuple, not title only;
+- re-read the created table and verify technical ids.
+
+Risk 5. Writing after statement lock.
+
+Mitigation:
+
+- always check lock state before write;
+- treat locked state as hard stop.
+
+Risk 6. Hidden duplicate writes.
+
+Mitigation:
+
+- use approved transfer record ids;
+- compare existing and desired values;
+- log all attempts.
+
+Risk 7. AI overreach.
+
+Mitigation:
+
+- keep teacher approval mandatory in MVP;
+- separate suggestion from official approval.
+
+
+22. REQUIRED NEXT PROJECT ARTEFACTS
+
+After this To-Be specification, the next project artefacts should be developed in this order.
+
+1. Student identity crosswalk specification
+2. Rule Pack schema
+3. Approved transfer record schema
+4. BRS connector write protocol
+5. Teacher approval UX specification
+6. Pilot scope and acceptance criteria
+7. Local deployment blueprint
+
+
+23. WHAT DATA IS STILL NEEDED FOR THE NEXT DESIGN STEP
+
+To move from this specification to a technical MVP design, the following data remains especially useful:
+
+- clean BRS login capture;
+- examples of real teacher reviews on several work types;
+- institutional rules for converting level to numeric score;
+- clarification of whether one approved work always maps to one BRS cell or sometimes to a grouped statement policy;
+- any stable institutional student identifier shared between systems;
+- desired pilot discipline and exact scope;
+- expected handling of rework, resubmission, and repeated attempts.
+
+
+24. FINAL ENGINEERING POSITION
+
+The correct first implementation direction is:
+
+- not a raw AI bot;
+- not a brittle browser macro;
+- not a full autonomous signing system;
+- but a controlled integration layer with AI inside it.
+
+The MVP bridge should therefore be positioned exactly here:
+
+approved faculty-side academic decision
+-> normalized approved transfer record
+-> rule-based numeric conversion
+-> verified student crosswalk
+-> BRS statement resolution or creation
+-> safe write into unlocked BRS form
+-> teacher review and official BRS signature
+
+This is the shortest path that is technically realistic, methodologically defensible, and scalable for faculty-wide implementation.

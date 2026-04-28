@@ -1,0 +1,617 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">
+<style>body{font-family:Arial,Helvetica,sans-serif;line-height:1.35;color:#222;margin:40px;} h1{font-size:24px;} h2{font-size:18px;margin-top:26px;} h3{font-size:15px;margin-top:18px;} p,li,td,th,pre{font-size:11pt;} table{border-collapse:collapse;width:100%;margin:10px 0 16px;} th,td{border:1px solid #999;padding:6px 8px;vertical-align:top;} th{background:#f0f0f0;} code{font-family:Menlo,Consolas,monospace;background:#f7f7f7;padding:1px 3px;} pre{background:#f7f7f7;border:1px solid #ddd;padding:10px;white-space:pre-wrap;} ul,ol{margin:0 0 12px 24px;} p{margin:0 0 12px;} .meta{color:#555;margin-bottom:14px;}</style></head><body>
+<h1>Technical HAR Analysis: `gtifem.ru` + `xfem.ru`</h1>
+<p>Date: 2026-04-26</p>
+<h2>1. Scope</h2>
+<p>This note fixes the technical `As-Is` picture from the provided HAR files and turns it into a `To-Be` MVP bridge design between two existing systems:</p>
+<ul>
+<li>`gtifem.ru` = faculty-side portfolio, review, level-based academic decision, review text, work report preview, teacher-side approval.</li>
+<li>`xfem.ru` = BRS / СФОП side, statements/columns, numeric grades, batch save, statement signing/locking.</li>
+</ul>
+<p>The goal of this analysis is not to restate the HAR files, but to identify:</p>
+<ul>
+<li>the real working endpoints and interaction types;</li>
+<li>the exact technical gap between a level-based decision and a numeric BRS value;</li>
+<li>where the MVP bridge must sit;</li>
+<li>what the first safe automation modes should be.</li>
+</ul>
+<h2>2. Input Materials</h2>
+<p>Analyzed HAR files:</p>
+<ul>
+<li>`01_gtifem_open_portfolio.har`</li>
+<li>`02_gtifem_open_review_modal.har`</li>
+<li>`3_xfem_login.har`</li>
+<li>`4_xfem_open_scores_table.har`</li>
+<li>`05_xfem_open_new_statement_form.har`</li>
+<li>`06_xfem_save_new_statement.har`</li>
+<li>`07_xfem_open_scores_edit_mode.har`</li>
+<li>`08_xfem_save_scores.har`</li>
+<li>`09_xfem_sign_or_lock_column.har`</li>
+</ul>
+<p>Important note:</p>
+<ul>
+<li>`3_xfem_login.har` does not actually contain a usable `xfem.ru` login flow.</li>
+<li>`4_xfem_open_scores_table.har` does not contain the intended score-table loading flow; it is mostly websocket noise.</li>
+</ul>
+<p>These two files should be treated as weak evidence and not as the basis for integration design.</p>
+<h2>3. Executive Conclusion</h2>
+<p>The current process is a two-system workflow with a manual human bridge in the middle.</p>
+<p>The teacher today performs four different translations by hand:</p>
+<ol>
+<li>reads the student work outside both systems;</li>
+<li>converts academic judgement into a level on `gtifem.ru`;</li>
+<li>converts that level into a numeric score for `xfem.ru`;</li>
+<li>identifies the right BRS column and the right student row manually before signing the statement.</li>
+</ol>
+<p>The MVP bridge must therefore appear **after the faculty-side academic decision is approved** and **before the BRS-side statement is locked**.</p>
+<p>In strict terms, the MVP should automate:</p>
+<ul>
+<li>extraction of the approved faculty-side decision;</li>
+<li>conversion of level to numeric score by rule pack;</li>
+<li>resolution of target student and target BRS statement/column;</li>
+<li>safe batch write into an unlocked BRS form;</li>
+<li>full audit logging.</li>
+</ul>
+<p>The MVP should **not** auto-sign a BRS statement in the first safe implementation.</p>
+<h2>4. Confirmed Endpoint Map</h2>
+<h2>4.1 `gtifem.ru`</h2>
+<table>
+<thead><tr><th>Business action</th><th>Method + endpoint</th><th>Interaction type</th><th>What is confirmed</th></tr></thead>
+<tbody>
+<tr><td>Open teacher portfolio table</td><td>`GET https://gtifem.ru/portfolio/`</td><td>Server-rendered HTML page</td><td>The portfolio page arrives as full HTML with rows, action links, hidden moderation form, work ids, and row data.</td></tr>
+<tr><td>Open review modal</td><td>No separate request</td><td>Pure UI action in browser</td><td>The moderation form is already embedded in the portfolio HTML as hidden block `id=&#x27;moderate&#x27;`.</td></tr>
+<tr><td>Preview work report before final approval</td><td>`POST https://gtifem.ru/portfolio/` with `id=&lt;work_id&gt;&amp;action=print`</td><td>AJAX request returning HTML</td><td>The server returns printable HTML report.</td></tr>
+<tr><td>Save teacher decision</td><td>`POST https://gtifem.ru/portfolio/` with multipart form data including `mod`, `RATING`, `THEME`, `COMMENTS`, `ACTION=edit`, `id`, `MOD_ID`, `moderate`</td><td>AJAX form submit</td><td>This is the real persistence call for the faculty-side decision.</td></tr>
+<tr><td>Change competencies</td><td>`POST https://gtifem.ru/portfolio/` via `upd_competence(this)`</td><td>AJAX form submit</td><td>Competency editing is inline and asynchronous.</td></tr>
+<tr><td>Delete work row</td><td>`POST https://gtifem.ru/portfolio/` with `ACTION=delete`</td><td>AJAX call</td><td>Deletion is row-level AJAX action.</td></tr>
+</tbody></table>
+<h3>Key faculty-side evidence</h3>
+<p>From the portfolio HTML and inline JS:</p>
+<ul>
+<li>the moderation form is already in page HTML;</li>
+<li>opening `Проверить` is not a server call;</li>
+<li>`send_form(this)` sends `new FormData(_this)` to `window.location.href` by AJAX;</li>
+<li>`action=print` opens a preview window and injects teacher-entered text into a printable template;</li>
+<li>the green `Подписать` button in the preview window does **not** call the server directly.</li>
+</ul>
+<p>The preview window script does only this:</p>
+<ul>
+<li>hides the preview button in the opener;</li>
+<li>shows the hidden submit block in the opener;</li>
+<li>closes the preview window.</li>
+</ul>
+<p>That means the real server-side approval is still the later `ACTION=edit` AJAX submission.</p>
+<h3>Strict conclusion on faculty-side approval</h3>
+<p>Faculty-side approval is a **two-step UI flow but a one-step persistence flow**:</p>
+<ol>
+<li>`action=print` = preview only, no durable save;</li>
+<li>`ACTION=edit` = durable teacher decision save.</li>
+</ol>
+<p>For `mod=Y` / `Принято`, the preview window is part of the acceptance ritual.</p>
+<p>For `mod=R` / `На доработку`, the JS hides preview and reveals direct submit instead, so the rejection/rework path is shorter.</p>
+<p>This difference matters for MVP event detection.</p>
+<h2>4.2 `xfem.ru`</h2>
+<table>
+<thead><tr><th>Business action</th><th>Method + endpoint</th><th>Interaction type</th><th>What is confirmed</th></tr></thead>
+<tbody>
+<tr><td>Open new statement category screen</td><td>`GET https://xfem.ru/grade/report/custom/custom.php?courseid=12636`</td><td>Server-rendered HTML page</td><td>First page before choosing category.</td></tr>
+<tr><td>Open statement creation form for concrete category</td><td>`GET https://xfem.ru/grade/report/custom/custom.php?categid=2&amp;courseid=12636`</td><td>Server-rendered HTML page</td><td>Real HTML form with statement fields.</td></tr>
+<tr><td>Save new statement</td><td>`POST https://xfem.ru/grade/report/custom/custom.php`</td><td>HTML form submit + redirect</td><td>Returns `303 See Other`, then redirects to score table page.</td></tr>
+<tr><td>Open score table edit mode</td><td>`GET https://xfem.ru/grade/report/custom/index.php?plugin=custom&amp;id=12636&amp;sesskey=...&amp;edit=1`</td><td>Server-rendered HTML page</td><td>Main edit form with hundreds of grade inputs.</td></tr>
+<tr><td>Save score values</td><td>`POST https://xfem.ru/grade/report/custom/index.php`</td><td>Batch HTML form submit</td><td>Saves many grade fields at once and returns full HTML page.</td></tr>
+<tr><td>Persist UI scroll preference</td><td>`POST https://xfem.ru/grade/report/custom/ajax_lock_preference.php`</td><td>AJAX call</td><td>Service call, not grade business logic.</td></tr>
+<tr><td>Open non-edit table mode</td><td>`GET https://xfem.ru/grade/report/custom/index.php?plugin=custom&amp;id=12636&amp;sesskey=...&amp;edit=0`</td><td>Server-rendered HTML page</td><td>Non-edit table view before signing flow.</td></tr>
+<tr><td>Sign / lock filled statement column</td><td>`POST https://xfem.ru/grade/report/custom/ajax/lock.php` with `courseid`, `eid`, `action=locksaved`</td><td>AJAX JSON call</td><td>Real lock endpoint for official signature / blocking.</td></tr>
+</tbody></table>
+<h2>5. Interaction Type Classification</h2>
+<h2>5.1 Pure UI actions without server request</h2>
+<ul>
+<li>Opening `Проверить` on `gtifem.ru`.</li>
+<li>Opening the already embedded moderation form.</li>
+<li>Preview-window button `Подписать` on `gtifem.ru` itself.</li>
+<p>- This button only manipulates the opener DOM and reveals the hidden submit button. - It is **not** the final persistence endpoint.</p>
+</ul>
+<h2>5.2 Server-rendered HTML pages</h2>
+<ul>
+<li>`GET /portfolio/` on `gtifem.ru`.</li>
+<li>`GET /grade/report/custom/custom.php?...` on `xfem.ru`.</li>
+<li>`GET /grade/report/custom/index.php?...` on `xfem.ru`.</li>
+</ul>
+<p>These are not clean JSON APIs. They are full HTML pages and must be treated as unstable UI contracts.</p>
+<h2>5.3 Regular HTML form submissions</h2>
+<ul>
+<li>`POST /grade/report/custom/custom.php` on `xfem.ru` to create a statement.</li>
+<li>`POST /grade/report/custom/index.php` on `xfem.ru` to save scores.</li>
+</ul>
+<p>These are classical PHP form posts, not resource-oriented REST APIs.</p>
+<h2>5.4 AJAX submissions</h2>
+<ul>
+<li>`POST /portfolio/` with `action=print` on `gtifem.ru`.</li>
+<li>`POST /portfolio/` with `ACTION=edit` on `gtifem.ru`.</li>
+<li>`POST /grade/report/custom/ajax_lock_preference.php` on `xfem.ru`.</li>
+<li>`POST /grade/report/custom/ajax/lock.php` on `xfem.ru`.</li>
+</ul>
+<h2>6. Confirmed Faculty-Side Technical Model</h2>
+<p>The teacher portfolio page already contains enough local state to support the moderation workflow:</p>
+<ul>
+<li>row-level `data-id=&quot;&lt;work_id&gt;&quot;`;</li>
+<li>teacher identity via hidden field `moderate`;</li>
+<li>teacher account id via `MOD_ID`;</li>
+<li>review form fields:</li>
+<p>- `mod` - `RATING` - `THEME` - `COMMENTS` - `ACTION=edit` - `id` - `MOD_ID` - `moderate`</p>
+</ul>
+<p>Example row evidence also shows:</p>
+<ul>
+<li>faculty-side work id, for example `data-id=&quot;267884&quot;`;</li>
+<li>faculty-side student profile link, for example `/social/user/9343/`;</li>
+<li>module and group in row HTML;</li>
+<li>competency labels already rendered in row HTML.</li>
+</ul>
+<p>This is important because `gtifem.ru` does expose a faculty-side student identity handle, but it is a **different namespace** from BRS-side student ids.</p>
+<h2>7. Confirmed BRS-Side Technical Model</h2>
+<h2>7.1 Statement creation form</h2>
+<p>The concrete statement form on `xfem.ru` contains:</p>
+<ul>
+<li>category (`categid`)</li>
+<li>type (`typeid`)</li>
+<li>description/comment (`description`)</li>
+<li>lesson date (`customdate`)</li>
+<li>maximum grade (`grademax`)</li>
+<li>minimum grade as fixed display value</li>
+<li>`courseid`</li>
+<li>`sesskey`</li>
+<li>`_qf__edit_custom_form=1`</li>
+</ul>
+<p>Observed save payload:</p>
+<ul>
+<li>`categid=2`</li>
+<li>`id=0`</li>
+<li>`courseid=12636`</li>
+<li>`itemtype=manual`</li>
+<li>`customid=`</li>
+<li>`sesskey=...`</li>
+<li>`_qf__edit_custom_form=1`</li>
+<li>`typeid=25`</li>
+<li>`description=ЛКЦ 12`</li>
+<li>`customdate=1777150800`</li>
+<li>`grademax=36,00`</li>
+</ul>
+<p>`id=0` means create, not update.</p>
+<p>The server does **not** return a clean machine-readable created statement object. It redirects back to the table.</p>
+<h2>7.2 Score table edit mode</h2>
+<p>The edit page contains multiple forms, but the main one is:</p>
+<ul>
+<li>`form action=&quot;index.php&quot; method=&quot;post&quot;`</li>
+</ul>
+<p>with hidden fields:</p>
+<ul>
+<li>`id=12636`</li>
+<li>`sesskey=...`</li>
+<li>`report=custom`</li>
+</ul>
+<p>and many cell fields of the form:</p>
+<ul>
+<li>`grade_&lt;student_id&gt;_&lt;column_id&gt;`</li>
+<li>`oldgrade_&lt;student_id&gt;_&lt;column_id&gt;`</li>
+</ul>
+<p>Observed counts in the captured save sample:</p>
+<ul>
+<li>total POST params: `423`</li>
+<li>`grade_*` params: `199`</li>
+<li>`oldgrade_*` params: `220`</li>
+</ul>
+<p>This confirms that saving one or a few values is still handled as a **batch form post**, not as a per-cell endpoint.</p>
+<h2>7.3 Internal id model on BRS-side</h2>
+<p>The same statement column is represented in several linked ways:</p>
+<ul>
+<li>table header sort id: `sortitemid=493222`</li>
+<li>form field suffix: `grade_&lt;student_id&gt;_493222`</li>
+<li>control-row statement id: `eid=i493222`</li>
+<li>edit statement URL: `custom.php?...&amp;id=493222...`</li>
+</ul>
+<p>Strict conclusion:</p>
+<ul>
+<li>the BRS statement/column id is the numeric stem, for example `493222`;</li>
+<li>control endpoints use the prefixed form `eid=i493222`.</li>
+</ul>
+<p>This relation is critical for the MVP writer.</p>
+<h2>7.4 Lock/sign model</h2>
+<p>The visible UI link on the page may point to `saved_lock.php?id=...&amp;eid=i493222`, but the actual lock operation in browser execution is an AJAX call:</p>
+<ul>
+<li>`POST /grade/report/custom/ajax/lock.php`</li>
+</ul>
+<p>with:</p>
+<ul>
+<li>`courseid=12636`</li>
+<li>`eid=i493222`</li>
+<li>`action=locksaved`</li>
+</ul>
+<p>Observed JSON response keys:</p>
+<ul>
+<li>`errormsg`</li>
+<li>`coursegrade`</li>
+<li>`typecategoryvalue`</li>
+<li>`datelocked`</li>
+<li>`userlocked`</li>
+<li>`notice`</li>
+<li>`avg`</li>
+<li>`lockdata`</li>
+<li>`lockitem`</li>
+<li>`canunlock`</li>
+<li>`newtitle`</li>
+</ul>
+<p>Observed lock result:</p>
+<ul>
+<li>`datelocked = 26.04.2026`</li>
+<li>`userlocked = Морозов`</li>
+<li>`canunlock = 0`</li>
+<li>`newtitle = Снять подпись`</li>
+</ul>
+<p>Strict conclusion:</p>
+<ul>
+<li>`action=locksaved` is the official BRS-side transition into signed/locked state;</li>
+<li>after this point, automated writing must be forbidden by policy in MVP mode;</li>
+<li>even if the UI later shows `Снять подпись`, current captured policy says `canunlock=0`, so no safe assumption of reversible locking should be made.</li>
+</ul>
+<h2>8. What the Weak HAR Files Do Not Prove</h2>
+<h2>8.1 `3_xfem_login.har`</h2>
+<p>This file does **not** capture the actual `xfem.ru` login flow.</p>
+<p>It contains:</p>
+<ul>
+<li>`GET https://gtifem.ru/bitrix/tools/public_session.php?...`</li>
+<li>websocket noise</li>
+</ul>
+<p>Therefore it does not prove:</p>
+<ul>
+<li>login endpoint;</li>
+<li>redirect chain;</li>
+<li>cookie/session establishment;</li>
+<li>session lifetime model.</li>
+</ul>
+<p>Any documentation that would claim these points from the provided file would be overstated.</p>
+<h2>8.2 `4_xfem_open_scores_table.har`</h2>
+<p>This file is not useful for table-load mechanics.</p>
+<p>It contains only websocket noise and does not capture the intended table-opening requests.</p>
+<h2>9. The Real Technical Gap</h2>
+<p>The bridge problem is not only “send score from A to B”.</p>
+<p>There are at least seven different gaps.</p>
+<h3>Gap 1. Semantic model mismatch</h3>
+<p>`gtifem.ru` stores:</p>
+<ul>
+<li>approval status;</li>
+<li>qualitative level;</li>
+<li>review text;</li>
+<li>work context.</li>
+</ul>
+<p>`xfem.ru` stores:</p>
+<ul>
+<li>numeric statement cell value;</li>
+<li>statement structure;</li>
+<li>category aggregates;</li>
+<li>course aggregates;</li>
+<li>statement lock state.</li>
+</ul>
+<p>The systems do not share a native “same assessment object”.</p>
+<h3>Gap 2. Student identity mismatch</h3>
+<p>Faculty-side uses one student identity namespace, for example:</p>
+<ul>
+<li>`/social/user/9343/`</li>
+</ul>
+<p>BRS-side uses another namespace, for example:</p>
+<ul>
+<li>`/user/view.php?id=7516&amp;course=12636`</li>
+</ul>
+<p>These ids are not shown to be the same.</p>
+<p>This means the MVP cannot safely rely on:</p>
+<ul>
+<li>FIO text only;</li>
+<li>row order only;</li>
+<li>group only.</li>
+</ul>
+<p>It needs a crosswalk.</p>
+<h3>Gap 3. Scale conversion gap</h3>
+<p>`gtifem.ru` level values:</p>
+<ul>
+<li>`2 = уровень не сформирован`</li>
+<li>`3 = пороговый`</li>
+<li>`4 = базовый`</li>
+<li>`5 = продвинутый`</li>
+</ul>
+<p>`xfem.ru` expects numeric values.</p>
+<p>There is no evidence that a universal fixed mapping should be hardcoded for all work types, all disciplines, and all statement categories.</p>
+<p>Therefore the MVP needs a configurable conversion layer, not a magic formula.</p>
+<h3>Gap 4. Statement resolution gap</h3>
+<p>To write into BRS, the system must know:</p>
+<ul>
+<li>`courseid`</li>
+<li>`categid`</li>
+<li>`typeid`</li>
+<li>statement description</li>
+<li>lesson date</li>
+<li>resulting `column_id`</li>
+</ul>
+<p>The create-statement POST does not return a compact created object with `column_id`.</p>
+<p>So after statement creation, the adapter must re-open or parse the returned table HTML and resolve the newly created column by stable attributes.</p>
+<h3>Gap 5. Transport mismatch</h3>
+<p>Faculty-side save is AJAX to a page endpoint returning non-structured content (`Array1` in captured sample).</p>
+<p>BRS-side grade save is a large batch HTML form post.</p>
+<p>This means the MVP bridge cannot be a thin “call two JSON APIs” service.</p>
+<p>It must be a browser-aware or HTML-aware adapter.</p>
+<h3>Gap 6. Timing / officiality mismatch</h3>
+<p>Faculty-side officiality happens at `ACTION=edit` after teacher approval flow.</p>
+<p>BRS-side officiality happens at `action=locksaved`.</p>
+<p>The safe transfer window lies strictly between them:</p>
+<ul>
+<li>after faculty-side approval is saved;</li>
+<li>before BRS-side statement column is signed/locked.</li>
+</ul>
+<h3>Gap 7. Audit and idempotency gap</h3>
+<p>Neither flow, in the captured form, provides a shared transfer id.</p>
+<p>Without a dedicated bridge record, the system cannot safely answer:</p>
+<ul>
+<li>was this work already transferred?</li>
+<li>to which statement column?</li>
+<li>with which numeric value?</li>
+<li>by which rule version?</li>
+<li>before or after lock?</li>
+</ul>
+<p>The MVP therefore needs its own audit ledger.</p>
+<h2>10. Draft `To-Be` MVP Bridge</h2>
+<h2>10.1 Recommended architecture</h2>
+<p>The first technically realistic bridge should contain these modules:</p>
+<ol>
+<li>`Faculty Decision Collector`</li>
+<li>`Approval Normalizer`</li>
+<li>`Student Identity Crosswalk`</li>
+<li>`Rule Pack / Level-to-Score Mapper`</li>
+<li>`BRS Statement Resolver / Creator`</li>
+<li>`BRS Form Writer`</li>
+<li>`Lock Guard`</li>
+<li>`Audit Ledger`</li>
+</ol>
+<h2>10.2 Recommended boundary</h2>
+<p>The bridge should start from the first durable faculty-side approval event:</p>
+<ul>
+<li>`POST /portfolio/` with `ACTION=edit`</li>
+</ul>
+<p>but should not immediately write to BRS in the safest first version.</p>
+<p>The safest first boundary is:</p>
+<ul>
+<li>collect approved faculty-side decision;</li>
+<li>normalize it;</li>
+<li>prepare transfer draft;</li>
+<li>write into BRS only after explicit transfer confirmation or into a pre-approved unlocked draft column.</li>
+</ul>
+<h2>10.3 Proposed `approved_transfer_record`</h2>
+<p>Minimum bridge object:</p>
+<pre>transfer_id
+source_system = gtifem
+source_work_id
+faculty_student_id
+faculty_teacher_id
+student_fio
+group_code
+module_name
+work_type_name
+competencies[]
+faculty_status_code
+faculty_status_text
+faculty_level_code
+faculty_level_text
+review_text
+faculty_saved_at
+rule_pack_id
+rule_pack_version
+target_system = xfem
+xfem_courseid
+xfem_student_id
+xfem_categid
+xfem_typeid
+xfem_statement_description
+xfem_statement_date
+xfem_column_id
+desired_numeric_score
+existing_numeric_score
+transfer_mode
+transfer_status
+lock_state_before_write
+write_attempted_at
+write_result
+lock_state_after_write</pre>
+<p>This record should live outside both legacy systems.</p>
+<h2>10.4 Recommended end-to-end MVP sequence</h2>
+<pre>Teacher checks work
+-&gt; faculty-side approval saved on gtifem.ru
+-&gt; bridge captures/reads approved decision
+-&gt; bridge normalizes decision and resolves student identity
+-&gt; bridge converts level to numeric score by rule pack
+-&gt; bridge resolves target BRS statement/column
+-&gt; bridge loads current BRS edit form
+-&gt; bridge verifies column is not locked
+-&gt; bridge compares current and desired value
+-&gt; bridge writes score through batch form post
+-&gt; bridge records audit trail
+-&gt; teacher reviews BRS result
+-&gt; teacher signs BRS statement manually</pre>
+<h2>11. Where Teacher Approval Must Remain</h2>
+<p>In the safest MVP, teacher approval should remain at two layers:</p>
+<ol>
+<li>**Academic approval** on `gtifem.ru`</li>
+<p>- teacher decides status, level, review text; - this remains the authoritative academic judgement.</p>
+</ol>
+<ol>
+<li>**Official BRS signature** on `xfem.ru`</li>
+<p>- teacher still signs the statement/column after reviewing the transferred scores.</p>
+</ol>
+<p>This keeps the AI/adapter out of the final official locking action in early rollout.</p>
+<h2>12. Level-to-Score Conversion Strategy</h2>
+<p>Do **not** hardcode one global conversion for all work types.</p>
+<p>Instead use a versioned rule pack, for example:</p>
+<pre>rule_pack_id = vit_2025_2026_portfolio_practice_v1
+
+if module = &quot;Введение в информационные технологии&quot;
+and faculty_work_type in {portfolio work types mapped to practical/lab evaluation}
+and faculty_level = &quot;Продвинутый&quot;
+then numeric_score = ...</pre>
+<p>The exact numeric mapping must be approved by academic owners.</p>
+<p>From an engineering perspective, the correct design is:</p>
+<ul>
+<li>map by `module + faculty work type + competency context + target statement type`;</li>
+<li>version the mapping;</li>
+<li>log the rule version used for each transfer.</li>
+</ul>
+<h2>13. How the MVP Should Find the Right BRS Column</h2>
+<p>The adapter should not rely on free-text title only.</p>
+<p>It should resolve target statement using a deterministic tuple:</p>
+<ul>
+<li>`courseid`</li>
+<li>`categid`</li>
+<li>`typeid`</li>
+<li>date</li>
+<li>description/comment</li>
+</ul>
+<p>Then it should re-open the BRS table and resolve:</p>
+<ul>
+<li>header `sortitemid=&lt;column_id&gt;`</li>
+<li>input names `grade_&lt;student_id&gt;_&lt;column_id&gt;`</li>
+<li>control id `eid=i&lt;column_id&gt;`</li>
+</ul>
+<p>This should be treated as the canonical resolved column identity.</p>
+<h2>14. How the MVP Should Write Scores Safely</h2>
+<p>Recommended write algorithm:</p>
+<ol>
+<li>Open BRS edit mode with current authenticated session.</li>
+<li>Parse the current HTML form.</li>
+<li>Resolve the exact `student_id` and `column_id`.</li>
+<li>Read current `oldgrade_*` / `grade_*`.</li>
+<li>Check lock indicators for the target column.</li>
+<li>If locked, abort and log.</li>
+<li>If target value already equals desired value, mark idempotent success and do not rewrite.</li>
+<li>If different, mutate only the intended `grade_&lt;student_id&gt;_&lt;column_id&gt;` values inside the current form snapshot.</li>
+<li>Submit the batch form back to `POST /grade/report/custom/index.php`.</li>
+<li>Re-read returned HTML and verify the value now matches.</li>
+<li>Log result.</li>
+</ol>
+<p>This is safer than synthesizing a “small custom POST” from scratch.</p>
+<h2>15. Idempotency Rules for the Bridge</h2>
+<p>The MVP must be idempotent.</p>
+<p>Suggested rules:</p>
+<ul>
+<li>never rewrite the same transfer if the destination value already equals the desired value;</li>
+<li>store `transfer_id -&gt; target courseid / column_id / student_id / desired value`;</li>
+<li>refuse duplicate writes when the same transfer has already succeeded;</li>
+<li>refuse writes after lock;</li>
+<li>if the statement column changed or was deleted, require re-resolution and log exception state.</li>
+</ul>
+<h2>16. Technical Limitations and Guardrails</h2>
+<p>These constraints should be explicitly stated in any technical design.</p>
+<h3>Session / security</h3>
+<ul>
+<li>`sesskey` cannot be hardcoded.</li>
+<li>Browser cookies or session state cannot be treated as permanent API credentials.</li>
+<li>The provided HAR files do not fully expose session establishment, so authentication must be handled through live browser session or approved local auth automation.</li>
+</ul>
+<h3>HTML dependency</h3>
+<ul>
+<li>Both systems are HTML-first, not stable JSON API products.</li>
+<li>DOM structure, field names, and inline JS behavior may change.</li>
+<li>Any adapter must be tested against real pages and must fail safely.</li>
+</ul>
+<h3>Official locking</h3>
+<ul>
+<li>After `action=locksaved`, the statement is in official signed state.</li>
+<li>Automatic score writing into that statement must be blocked by policy.</li>
+</ul>
+<h3>Write semantics</h3>
+<ul>
+<li>BRS saves scores via one batch form, not a single-cell API.</li>
+<li>Safe automation therefore means controlled form mutation and replay, not arbitrary point writes.</li>
+</ul>
+<h3>Auditability</h3>
+<ul>
+<li>Legacy systems do not provide a shared transfer object.</li>
+<li>The MVP must maintain its own audit table / journal.</li>
+</ul>
+<h2>17. Recommended MVP Modes</h2>
+<h2>Mode A. Safe draft-only mode</h2>
+<p>What it does:</p>
+<ul>
+<li>reads approved faculty-side decisions;</li>
+<li>converts level to numeric draft;</li>
+<li>prepares transfer registry or CSV;</li>
+<li>does not write to BRS.</li>
+</ul>
+<p>Best for:</p>
+<ul>
+<li>pilot validation;</li>
+<li>proving mapping quality;</li>
+<li>low organizational risk.</li>
+</ul>
+<h2>Mode B. Assisted transfer mode</h2>
+<p>What it does:</p>
+<ul>
+<li>resolves student and target statement;</li>
+<li>prepares a prevalidated transfer set;</li>
+<li>teacher explicitly triggers BRS write;</li>
+<li>teacher still signs BRS manually.</li>
+</ul>
+<p>Best for:</p>
+<ul>
+<li>first real faculty pilot.</li>
+</ul>
+<h2>Mode C. Automatic fill into unlocked statement</h2>
+<p>What it does:</p>
+<ul>
+<li>if target statement exists and is unlocked, writes numeric values automatically;</li>
+<li>never auto-locks;</li>
+<li>leaves BRS signature to teacher.</li>
+</ul>
+<p>Best for:</p>
+<ul>
+<li>mature pilot after trust is established.</li>
+</ul>
+<h2>Hard prohibition</h2>
+<p>The MVP should not:</p>
+<ul>
+<li>auto-write into already signed/locked statement columns;</li>
+<li>auto-unlock statements;</li>
+<li>auto-sign BRS statements in the first implementation wave.</li>
+</ul>
+<h2>18. What Additional HAR Captures Are Still Needed</h2>
+<p>Mandatory re-capture:</p>
+<ol>
+<li>`xfem` login flow</li>
+<p>- current `3_xfem_login.har` does not contain the intended evidence. - reshoot from clean Network: - open login page; - submit credentials; - capture redirects; - open first authenticated page.</p>
+</ol>
+<p>Optional but useful re-capture:</p>
+<ol>
+<li>Clean `xfem` open score table flow outside edit mode</li>
+<p>- current `4_xfem_open_scores_table.har` is not useful. - not critical for MVP because edit mode and save flow are already captured, but still useful for full documentation.</p>
+</ol>
+<p>Optional only if deeper faculty-side automation is planned:</p>
+<ol>
+<li>Clean faculty-side acceptance chain from:</li>
+<p>- opening modal; - previewing report; - clicking preview `Подписать`; - final `ACTION=edit` submission.</p>
+</ol>
+<p>This is not strictly required anymore for endpoint mapping, because the current captures and inline JS are already enough to identify the real persistence boundary.</p>
+<h2>19. Final Technical Position</h2>
+<p>The MVP bridge should be placed here:</p>
+<pre>gtifem faculty approval saved
+-&gt; approved transfer record created
+-&gt; level-to-score conversion by rule pack
+-&gt; student crosswalk resolution
+-&gt; BRS statement resolution / creation
+-&gt; unlocked BRS batch form write
+-&gt; teacher reviews and signs in BRS</pre>
+<p>This is the first implementation point that is both:</p>
+<ul>
+<li>technically realistic with the current legacy systems;</li>
+<li>organizationally defensible;</li>
+<li>compatible with partial and gradual rollout.</li>
+</ul>
+<p>The most important non-obvious conclusion from the HAR analysis is this:</p>
+<p>**the bridge is not “AI checks work and writes grade”.**</p>
+<p>The real bridge is:</p>
+<p>**approved academic decision -&gt; normalized transfer record -&gt; rule-based numeric fixation in an unlocked BRS statement -&gt; human official signature.**</p>
+<p>That is the correct MVP boundary.</p>
+</body></html>
